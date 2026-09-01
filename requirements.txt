@@ -1,0 +1,5 @@
+clams-utils>=251011
+dotenv>=0.9.9
+flask==2.*
+mmif-python==1.4.*
+rich>=15.0.0

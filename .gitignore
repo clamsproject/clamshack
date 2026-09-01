@@ -1,0 +1,6 @@
+data
+backup.sh
+find.sh
+venv
+__pycache__
+src/.env
