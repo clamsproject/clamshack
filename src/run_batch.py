@@ -7,6 +7,13 @@ from pathlib import Path
 from mmif import Mmif
 #from mmif.utils.workflow_helper import generate_workflow_identifier
 
+# Same temporary hack as in shack.__init__
+import sys
+import os
+from dotenv import load_dotenv
+load_dotenv()
+sys.path.append(os.environ['DATAHOUSING_CODE'])
+
 import api
 from api.cli import ClamShack, timestamp
 from api.model.storage import upload_mmif
