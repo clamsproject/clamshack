@@ -25,22 +25,17 @@ The names used to be CLAMS Shack and CLAMS Shell, but that felt clunky with the 
 
 ### Running the Shack and the Shell
 
-This requires Python 3.12 or later and the modules named in the requirements file. The shack  is not yet a pip-installable package so for now you need to do a couple of tedious things first:
+This requires Python 3.12 or later and the modules named in the requirements file. The shack is not yet a pip-installable package on PyPI so for now you need to do a couple of tedious things first:
 
 - Install the dependencies, preferably in a virtual environment.
-- Make sure you got the code in [aapb-brandeis-datahousing](https://github.com/clamsproject/aapb-brandeis-datahousing).
-- Set up the environment file. It actually moslty does not matter what is in this environment, but at the moment the file is still needed. It has settings that are needed for the standalone version of the aapb-brandeis-datahousing code above. You will also need to tell the environment file where the datahousing code lives.
+- Set up the environment file. It actually does not matter what is in this environment, but at the moment the file is still needed.
 
 This can  be done as follows from the top-level directory of this repository:
 
 ```bash
 pip install -r requirements.txt
-cd ..
-git clone https://github.com/clamsproject/aapb-brandeis-datahousing
-git checkout 41-shack
-cd ../clamshack/src
+cd src
 cp .env.sample .env
-echo "DATAHOUSING_CODE=<path-to-datahousing-code>/aapb-brandeis-datahousing" >> .env
 ```
 
 After that, remain in the `src` directory and you can create and open shacks at your leisure.

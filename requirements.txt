@@ -3,3 +3,5 @@ dotenv>=0.9.9
 flask==2.*
 mmif-python==1.4.*
 rich>=15.0.0
+./packages/inspector_mv-0.0.3.tar.gz
+./packages/mmif_storage-0.1.0.tar.gz

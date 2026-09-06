@@ -15,12 +15,11 @@ from rich.syntax import Syntax
 
 from mmif.utils.cli import describe
 from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
+from mmif_storage.utils import load_json
 
-from api.shack import ClamShack
-
-from api.utils import load_json
-from api.cli_utils import console, messages, COMMANDS, timestamp, path_as_string
-from api.cli_utils import info, warning, error, dribble, get_tree
+from shack import ClamShack
+from shack.cli_utils import console, messages, COMMANDS, timestamp, path_as_string
+from shack.cli_utils import info, warning, error, dribble, get_tree
 
 
 DEBUG = False
