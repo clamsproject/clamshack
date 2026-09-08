@@ -5,13 +5,11 @@ import argparse
 from pathlib import Path
 
 from mmif import Mmif
-#from mmif.utils.workflow_helper import generate_workflow_identifier
+from mmif_storage.errors import StorageWarning
+from mmif_storage.model.storage import upload_mmif
 
-import api
-from api.cli import ClamShack, timestamp
-from api.model.storage import upload_mmif
-from api.run import ClamsApp
-from api.errors import StorageWarning
+from shack.cli import ClamShack, timestamp
+from shack.run import ClamsApp
 
 
 def main(args):

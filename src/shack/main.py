@@ -4,9 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-import api.run
+import shack.run
 
-from api.cli_utils import timestamp, path_as_string, path_as_tuples
+from shack.cli_utils import timestamp, path_as_string, path_as_tuples
 
 
 class ClamShack:
@@ -39,7 +39,7 @@ class ClamShack:
         self.path = Path('.')    # the current working path inside the mmif directory
         self._jobs = [p for p in self.jobs_dir.iterdir() if p.suffix == '.txt']
         self.history = History(self.history_file)
-        self.apps = api.run.APPS
+        self.apps = shack.run.APPS
         self.app = None          # selected app for a batch job
         self.params_file = None  # input file used to set parameters
         self.params = {}         # run-time parameters
@@ -158,10 +158,10 @@ class ClamShack:
     def add_mmif_source(self, container_path: Path):
         source_path = self.sources_dir / f'{container_path.stem}.mmif'
         if source_path.exists():
-            source_mmif = api.run.app.update_source(source_path, container_path)
+            source_mmif = shack.run.app.update_source(source_path, container_path)
         else:
             #self._assets.sources[source_path.stem] = source_path
-            source_mmif = api.run.app.create_source([container_path])
+            source_mmif = shack.run.app.create_source([container_path])
         with open(source_path, 'w') as fh:
             fh.write(source_mmif.serialize(pretty=True))
 
@@ -217,18 +217,18 @@ class ClamShack:
                 raise ShackError(f'Directory "{path}" does not exist')
 
     def register(self, url: str):
-        api.run.register_app(url)
+        shack.run.register_app(url)
 
     def select_app(self, selection: str) -> bool:
         """Select an application if it is amongst the registered apps,
         return True or False depending on whether selection succeeded."""
         if selection in self.apps:
-            self.app = api.run.ClamsApp(selection, self.apps[selection])
+            self.app = shack.run.ClamsApp(selection, self.apps[selection])
             return True
         return False
 
     def run_job(self, name: str):
-        process_id = api.run.run_job(timestamp(), name, self)
+        process_id = shack.run.run_job(timestamp(), name, self)
         return process_id
 
     def reindex(self):
