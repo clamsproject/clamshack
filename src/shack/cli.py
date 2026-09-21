@@ -264,7 +264,8 @@ class Shell(Cmd):
                 warning(f'Selection does not exist')
 
     def do_register(self, arg):
-        self.shack.register(arg)
+        result = self.shack.register(arg)
+        print(result)
 
     def do_jobs(self, arg):
         if arg:

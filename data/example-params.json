@@ -1,0 +1,6 @@
+{
+	"pretty": true,
+	"hopsasa": "ole",
+	"threshold": 3,
+	"choices": ["yes", "no", "maybe"]
+}

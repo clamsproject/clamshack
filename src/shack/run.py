@@ -54,6 +54,8 @@ class ClamsApp:
 def register_app(url: str):
     """Check the input url with a GET request to see if it is a CLAMS app, if
     so register the url in the APPS variable under the identifier of the app."""
+    # TODO: clean up the return value, should be some kind of json with a status
+    # and a message
     if not url.startswith('http://'):
         url = f'http://{url}'
     try:
@@ -62,9 +64,9 @@ def register_app(url: str):
         if is_clams_app_result(data):
             app_id = data['identifier']
             APPS[app_id] = url
-            print(f'Registered {app_id}')
+            return f'Registered {app_id}'
         else:
-            print('The URL does not point to a CLAMS App')
+            return 'The URL does not point to a CLAMS App'
     except requests.exceptions.ConnectTimeout:
         print('Connection timeout')
     except Exception:

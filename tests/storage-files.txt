@@ -1,0 +1,14 @@
+# This files picks parameter and MMIF files from the example storage in the data
+# directory. Just picking the one that are useful for testing.
+
+# SWT results
+
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e.json
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/cpb-aacip-f551104e446-clip2.mmif
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/cpb-aacip-f551104e446-clip1.mmif
+
+# Captioner results
+
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/smolvlm2-captioner/v1.0/d41d8cd98f00b204e9800998ecf8427e.json
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/smolvlm2-captioner/v1.0/d41d8cd98f00b204e9800998ecf8427e/cpb-aacip-f551104e446-clip2.mmif
+swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/smolvlm2-captioner/v1.0/d41d8cd98f00b204e9800998ecf8427e/cpb-aacip-f551104e446-clip1.mmif

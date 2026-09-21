@@ -2,7 +2,13 @@
 
 How to use the ClamShack and its ClamShell command line interface.
 
+[ [introduction](#introduction)
+| [assets](#assets)
+| [workflows](#workflows)
+| [other](#other)
+]
 
+<a name='introduction'></a>
 ## 1. Introduction
 
 The ClamShack and the ClamShell together form a tool for running CLAMS applications over relatively small sets of data. It makes it much easier for a developer to actually manage processing some data, but is definitely not a tool to be used by a lay person. Rather, it is for people with some general knowledge of what CLAMS is as well as the ability to (1) run code in terminals and (2) start a CLAMS application as a Docker or Podman container.
@@ -65,6 +71,7 @@ The prompt in the terminal is a shell symbol followed by the name of the Shack:
 > Unfortunately the shell symbol is not quite a clam shell, that symbol did not appear to be available as a unicode character.
 
 
+<a name='assets'></a>
 ## 2. Assets
 
 Every ClamShack is associated with an assets list, this association can be made only once when you create a new shack. Once you have specified a set of assets you cannot change them anymore, you would have to create a new Shack if you want to do that.
@@ -120,6 +127,7 @@ MMIF source files live in the ClamShack directory in `sources` and look like thi
 Note how the location has appended the relative path of the asset from the list to a the top-level directory named `file:///data`, which points to the container's data directory.
 
 
+<a name='workflows'></a>
 ## 3. Workflows and CLAMS Apps
 
 The Shack has only access to CLAMS Apps that are running on ports, typically as Docker or Podman containers. Those apps can be registered by providing the host name and the port for the app.
@@ -143,13 +151,13 @@ Next up is to make sure that apps are registered from available Docker container
 As mentioned above, running containers are needed for the Shack. Here is as an example how to run the spaCy container. First get the image:
 
 ```bash
-docker pull ghcr.io/clamsproject/app-spacy-wrapper:v2.2
+docker pull ghcr.io/clamsproject/app-spacy-wrapper:v2.3
 ```
 
 As usual the tricky part is to mount the container correctly so it can find the assets. We mount the `/data` directory on the container to the local directory where the assets live, using the asset list example from above:
 
 ```bash
-docker run --rm -d -p 5001:5000 -v /Users/Shared/aapb/assets:/data --name spacy ghcr.io/clamsproject/app-spacy-wrapper:v2.2
+docker run --rm -d -p 5001:5000 -v /Users/Shared/aapb/assets:/data --name spacy ghcr.io/clamsproject/app-spacy-wrapper:v2.3
 ```
 
 Basically, the `/data` directory maps to the highest path that governs all assets. 
@@ -254,6 +262,7 @@ We now have registered and selected an app, set the parameters and selected the 
 > At the moment, jobs run only one CLAMS application on the input data. It might seem appealing to start one job on the MMIF sources and then a follow-up job on the output, but this is not a good idea because the follow-up job will not wait for files to be available. Multi-app jobs are on the whish list.
 
 
+<a name='other'></a>
 ## 4. Some other goodies
 
 

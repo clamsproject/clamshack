@@ -106,7 +106,7 @@ class ClamShack:
         return self.mmif_index
 
     def __str__(self):
-        return f'<ClamShack "{self.location}" assets={len(self.assets)}>'
+        return f'<ClamShack "{self.name}" assets={len(self.assets)}>'
 
     def job_file(self, job_name: str):
         return self.jobs_dir / f'{job_name}.txt'
@@ -158,10 +158,10 @@ class ClamShack:
     def add_mmif_source(self, container_path: Path):
         source_path = self.sources_dir / f'{container_path.stem}.mmif'
         if source_path.exists():
-            source_mmif = shack.run.app.update_source(source_path, container_path)
+            source_mmif = shack.run.update_source(source_path, container_path)
         else:
             #self._assets.sources[source_path.stem] = source_path
-            source_mmif = shack.run.app.create_source([container_path])
+            source_mmif = shack.run.create_source([container_path])
         with open(source_path, 'w') as fh:
             fh.write(source_mmif.serialize(pretty=True))
 
@@ -217,7 +217,7 @@ class ClamShack:
                 raise ShackError(f'Directory "{path}" does not exist')
 
     def register(self, url: str):
-        shack.run.register_app(url)
+        return shack.run.register_app(url)
 
     def select_app(self, selection: str) -> bool:
         """Select an application if it is amongst the registered apps,
@@ -522,7 +522,6 @@ class MmifIndex:
         contains the term."""
         results = []
         dirs = [d for d in self.dirs if len(d.parts) % 3 == 0]
-        print(dirs)
         for directory in dirs:
             triples = path_as_tuples(directory)
             # try to match on the app part of the last triple in the path
