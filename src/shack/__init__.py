@@ -1,3 +1,3 @@
 
-from shack.main import ClamShack, ShackError
-from shack.main import History, Assets, StoragePath, MmifIndex, Job
+from shack.core import ClamShack, ShackError
+from shack.core import History, Assets, StoragePath, MmifIndex, Job

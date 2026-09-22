@@ -47,7 +47,7 @@ def get_input_files(shack: ClamShack, path: str) -> list:
     if path == '.':
         return shack.sources
     else:
-        p = shack.mmif_dir / shack.cwd() / args.path
+        p = shack.mmif_dir / shack.cwd() / path
         return [f for f in p.iterdir() if f.is_file() and f.suffix == '.mmif']
 
 

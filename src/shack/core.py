@@ -111,7 +111,7 @@ class ClamShack:
     def job_file(self, job_name: str):
         return self.jobs_dir / f'{job_name}.txt'
 
-    def search(self, term: str, mode: str) -> list | dict:
+    def search(self, term: str|list, mode: str) -> list | dict:
         """Search assets, MMIF files and parameter definition given a search term
         that is a partial guid or a partial app name."""
         self.mmif_index.dequeue()

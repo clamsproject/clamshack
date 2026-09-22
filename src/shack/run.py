@@ -74,11 +74,11 @@ def register_app(url: str):
 
 
 def run_job(timestamp: str, name: str, shack: 'ClamShack') -> str:
-    """Call the run_batch.py script to run a ClamShack job. Initializes the jobs
-    file (with a timestamp and other goodies), spins off a subprocess, and returns
-    the process identifier."""
+    """Call the main shack module to run a ClamShack job. Initializes the jobs file
+    (with a timestamp and other goodies), spins off a subprocess, and returns the
+    process identifier."""
     param_string = json.dumps(shack.params)
-    cmd = ['python', 'run_batch.py', name,
+    cmd = ['python', '-m', 'shack', 'batch', name,
            '--location', str(shack.location),
            '--path', str(shack.cwd()),
            '--app-name', shack.app.name,

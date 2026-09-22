@@ -4,6 +4,10 @@ You are now in the ClamShack, a tool for running CLAMS applications and managing
 
 See [docs/clamshack-manual.md](docs/clamshack-manual.md) on how to work with the tool.
 
-To run the tests run the `pytest` command from the top-level directory.
+To run the tests do the following:
 
-> Running the tests now still has some rather poorly documented requirements, this wil be cleaned up soonish. 
+```bash
+pip install -e .
+pip install pytest
+pytest
+```

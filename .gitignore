@@ -4,4 +4,5 @@ find.sh
 venv
 __pycache__
 src/.env
+src/clams_tool_shack.egg-info
 .DS_Store

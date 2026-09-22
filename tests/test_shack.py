@@ -2,37 +2,27 @@
 
 Testing the ClamShack.
 
+This has two requirements:
+
+- A spacy-wrapper CLAMS app running in a container using port 5001.
+- A local copy of the mmif-storage repository. The tests assume that there is a
+  mmif-storage repository as a sister to this repository, edit MMIF_STORAGE_REPO
+  if it resides elsewhere.
+
 """
 
-# TODO:
-#
-# - There are now 10 assets mentioned, prune this donw to 2.
-# - Add file upload to TestBasics, using some code from run_batch.py
-#       from mmif_storage.model.storage import upload_mmif
-#       path = upload_mmif(serialized_mmif, root=shack.mmif_dir, overwrite=False)
-# - May need a requirement that the assets mentioned in the example file do exist
-#   on the local disk. For the tests we may need to fake them (I do think they can
-#   all be empty).
-# - The MMIF_STORAGE_REPO setting should be in a config file.
-
-
+import time
 import shutil
 from pathlib import Path
 
 import pytest
 
-from shack.main import ClamShack, History, Job, ShackError, StoragePath
+from shack import ClamShack, History, Job, ShackError, StoragePath
 
 
-ASSETS_FILE = 'data/example-assets.txt'
+DEBUG = False
 MMIF_STORAGE_REPO = '../mmif-storage'
-
-
-@pytest.fixture(scope='session')
-def shack_path(tmpdir_factory):
-    # NOTE. This is probably deprecated but keeping it for now.
-    d = tmpdir_factory.mktemp('shack')
-    yield Path(d)
+ASSETS_FILE = 'tests/assets.txt'
 
 
 @pytest.fixture(scope='session')
@@ -49,6 +39,8 @@ def example_shack(tmpdir_factory, mmif_storage_repo):
     if repo is None:
         repo = MMIF_STORAGE_REPO
     shack = ClamShack(f'{str(d)}/example-shack', assets=ASSETS_FILE)
+    if DEBUG:
+        print('\n>>> shack.location =', shack.location)
     mmif_dir_source = Path(repo) / 'data/storage-example'
     mmif_dir_target = Path(str(d)) / 'example-shack/mmif'
     file_list = 'tests/storage-files.txt'
@@ -86,7 +78,7 @@ class TestBasics():
         """A new ClamShack creates its expected directory structure."""
         # Avoid loading or invoking a real CLAMS application during construction, this
         # is not needed for this test but maybe for some other future tests.
-        # monkeypatch.setattr("shack.main.shack.run.APPS", {})
+        # monkeypatch.setattr("shack.run.APPS", {})
         assert empty_shack.name == 'empty-shack'
         assert empty_shack.assets_dir.is_dir()
         assert empty_shack.mmif_dir.is_dir()
@@ -169,24 +161,13 @@ class TestShack():
 
     """Testing some higher-level functionality on an example shack."""
 
-    # Include the following:
-    #
-    # - navigating the tree
-    # - running a job (should only run when the container is running)
-    # - checking results afterwards, including: updated search, existence of the
-    #   new path
-    #
-    # This needs a running spaCy container and an example shack with proper input.
-    # Create the shack as before, but populate the MMIF directory with data from 
-    # mmif-storage and job files that should be in the tests directory.
-
     def test_settings(self, example_shack):
         settings = {k:v for k,v in example_shack.get_settings()}
         assert settings['jobs'] == 2
         assert settings['path'] == '.'
         assert settings['parameters'] == {}
         assert settings['clams_app'] == None
-        assert settings['sources'] == 10
+        assert settings['sources'] == 2
 
     def test_search(self, example_shack):
         # TODO: add params search, maybe embedded in the test_run_job so that there
@@ -218,15 +199,52 @@ class TestShack():
         assert 'smolvlm2-captioner' in Path(settings['path']).parts
 
     def test_run_job(self, example_shack):
-        # TODO: this does not run because with the current set up it cannot find
-        # the run_batch script, should really make that part of the shack package.
-        # example_shack.run_job('j3')
-        assert 1 == 1
+        created_path = (
+            'swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e'
+            '/smolvlm2-captioner/v1.0/d41d8cd98f00b204e9800998ecf8427e'
+            '/spacy-wrapper/v2.3/5fe49d06725497b274b6eaaf0fe0c5d2')
+        created_path = 'spacy-wrapper/v2.3/5fe49d06725497b274b6eaaf0fe0c5d2'
+        with pytest.raises(ShackError, match="does not exist"):
+            example_shack.cd(created_path)
+        example_shack.run_job('j3')
+        # Sending input to the container and writing the result to storage is done
+        # in a separate process, so we give it some time to finish up.
+        time.sleep(2)
+        # TODO: only one of the two files gets actually written, this seems like 
+        # the old spacy issue but we used the new spacy-wrapper (v2.3).
+        assert (example_shack.jobs_dir / 'j3.txt').is_file()
+        example_shack.cd(created_path)
+        assert Path('cpb-aacip-f551104e446-clip1.mmif') in example_shack.files()
+        search_results = example_shack.search(['pretty=True'], 'params')
+        assert len(search_results) == 1
+        assert 'spacy-wrapper' in search_results[0].parts
 
 
-def print_settings(shask: ClamShack):
+def print_settings(shack: ClamShack):
     print()
     for k, v in shack.get_settings():
         print(f'{k}\n  {v}')
-    print(shack.apps)
 
+
+# The following were suggested by copilot and are for future reference, they are
+# disabled for now, but the index does need testing.
+
+def xtest_mmif_index_finds_mmif_files(tmp_path, monkeypatch):
+    monkeypatch.setattr("shack.run.APPS", {})
+    shack = ClamShack(str(tmp_path / "example"), assets=None)
+    result_dir = shack.mmif_dir / "input" / "app" / "run"
+    result_dir.mkdir(parents=True)
+    (result_dir / "document.mmif").write_text("{}")
+    shack.reindex()
+    assert "document" in shack.index.data
+    assert Path("input/app/run/document.mmif") in shack.index.data["document"]
+
+def xtest_mmif_search_matches_file_stem(tmp_path, monkeypatch):
+    monkeypatch.setattr("shack.run.APPS", {})
+    shack = ClamShack(str(tmp_path / "example"), assets=None)
+    result_dir = shack.mmif_dir / "input" / "app" / "run"
+    result_dir.mkdir(parents=True)
+    (result_dir / "document.mmif").write_text("{}")
+    shack.reindex()
+    results = shack.search("doc", "mmif")
+    assert "document" in results
