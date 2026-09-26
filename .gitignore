@@ -1,8 +1,10 @@
 data
 backup.sh
 find.sh
+dist
+build
 venv
 __pycache__
 src/.env
-src/clams_tool_shack.egg-info
+src/*.egg-info
 .DS_Store

@@ -40,13 +40,14 @@ This can  be done as follows from the top-level directory of this repository:
 
 ```bash
 pip install -r requirements.txt
+pip install packages/mmif_storage-0.2.0.tar.gz
 cd src
 cp .env.sample .env
 ```
 
 After that, remain in the `src` directory and you can create and open shacks at your leisure.
 
-To **create** a shack:
+To **create** a shack using the example assets list:
 
 ```bash
 python -m shack.cli --shack <DIRECTORY> --assets <FILE>

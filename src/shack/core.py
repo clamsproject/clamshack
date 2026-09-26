@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
+from mmif_storage.model.storage import StoragePath
+
 import shack.run
 
 from shack.cli_utils import timestamp, path_as_string, path_as_tuples
@@ -259,9 +261,7 @@ class ClamShack:
             ('parameters', self.params)]
 
 
-
 class ShackError(Exception): pass
-
 
 
 class History:
@@ -309,7 +309,6 @@ class History:
             fh.write('')
 
 
-
 class Assets:
 
     """Keeps track of the asset files and the MMIF source files created for those
@@ -339,101 +338,6 @@ class Assets:
             print('\nMMIF source files in the Shack:')
             for k in self.sources:
                 print(f'  {k}  -->  {self.sources[k]}')
-
-
-
-class StoragePath():
-
-    """Embeds a regular Path and provides some extra data and functionality relevant
-    to the MMIF storage that the path is in."""
-
-    def __init__(self, shack: 'ClamShack', path: str = ''):
-        """Initialize an instance that has access to the ClamShack Path and add
-        some extra information to it. The path parameter contains the relative
-        path from the mmif root directory or the full path including the Shack's
-        mmif directory."""
-        if str(path).startswith(str(shack.mmif_dir)):
-            full_path = Path(path)
-            rel_path = Path(*full_path.parts[len(shack.mmif_dir.parts):])
-        else:
-            full_path = Path(shack.mmif_dir) / path
-            rel_path = Path(path)
-        self.shack = shack
-        self.mmif_dir = shack.mmif_dir
-        self.full_path = full_path
-        self.rel_path = rel_path
-        self._name = self.rel_path.name
-
-    def __str__(self):
-        """String representation using the relative path."""
-        return f'<StoragePath "{self.shortname}">'
-
-    def __len__(self):
-        """Length of the full path."""
-        return len(self.full_path.parts)
-
-    @property
-    def name(self):
-        """The final component of the relative path, if any."""
-        return self._name
-
-    @property
-    def stem(self):
-        """The stem of the relative path, if any."""
-        return self.rel_path.stem
-
-    @property
-    def shortname(self):
-        """Shortened name of the full path."""
-        return path_as_string(self.full_path)
-    
-    @property
-    def shortrelname(self):
-        """Shortened name of the relative path."""
-        return path_as_string(self.rel_path)
-
-    @property
-    def parts(self):
-        return self.full_path.parts
-
-    def is_dir(self):
-        return self.full_path.is_dir()
-
-    def is_file(self):
-        return self.full_path.is_file()
-
-    def iterdir(self):
-        return self.full_path.iterdir()
-
-    def pp(self):
-        print(f'\n{self}')
-        print(f'  mmif_dir  = {self.mmif_dir}')
-        print(f'  rel_path  = {self.rel_path}')
-        print(f'  full_path = {self.full_path}\n')
-
-    def ddir(self):
-        paths = []
-        depth = len(self) + 3
-        prefix_length = len(self.mmif_dir.parts)
-        for root, _, _ in self.full_path.walk():
-            if len(root.parts) == depth:
-                paths.append(
-                    (Path(*root.parts[prefix_length:]), Path(*root.parts[-3:]) ))
-        return paths
-
-    def rmtree(self, indent=''):
-        """Delete the path from the storage, if there is a sister path with the
-        same name with a .json suffix, then delete that file as well."""
-        shutil.rmtree(str(self.full_path))
-        properties_file = StoragePath(
-            self.shack, f'{str(self.full_path.parent)}/{self.name}.json')
-        if properties_file.is_file():
-            properties_file.unlink()
-
-    def unlink(self):
-        """Remove the file from the storage and from the index."""
-        self.full_path.unlink()
-
 
 
 class MmifIndex:
@@ -567,7 +471,6 @@ class MmifIndex:
         print('>>> dirs')
         for d in sorted(self.dirs):
             print(path_as_string(d))
-
 
 
 class Job:

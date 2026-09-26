@@ -17,7 +17,10 @@ from pathlib import Path
 
 import pytest
 
-from shack import ClamShack, History, Job, ShackError, StoragePath
+import mmif_storage
+from mmif_storage import StoragePath
+
+from shack import ClamShack, History, Job, ShackError
 
 
 DEBUG = False
@@ -126,12 +129,15 @@ class TestBasics():
     def test_storage_path_properties(self, empty_shack: ClamShack):
         dummy_path = "dummy-app/v0.1/d41d8cd98f00b204e9800998ecf8427e/result.mmif"
         dummy_path_short = "dummy-app/v0.1/d41d8cd9/result.mmif"
-        storage_path = StoragePath(empty_shack, dummy_path)
+        # Need to update the storage path on the mmif_storage package because it is
+        # required when initializing the StoragePath instance.
+        mmif_storage.config.STORAGE_DIR = str(empty_shack.mmif_dir)
+        storage_path = StoragePath(dummy_path)
         assert storage_path.rel_path == Path(dummy_path)
         assert storage_path.full_path == empty_shack.mmif_dir / dummy_path
         assert storage_path.name == "result.mmif"
         assert storage_path.stem == "result"
-        assert storage_path.shortrelname == dummy_path_short
+        assert storage_path.shortpathname == dummy_path_short
 
     def test_add_parameter_converts_value_to_string(self, empty_shack: ClamShack):
         #shack = ClamShack(str(shack_path / 'shack'), assets=None)
