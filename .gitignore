@@ -3,7 +3,7 @@ backup.sh
 find.sh
 dist
 build
-venv
+venv*
 __pycache__
 src/.env
 src/*.egg-info

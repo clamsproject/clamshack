@@ -9,6 +9,10 @@ This has two requirements:
   mmif-storage repository as a sister to this repository, edit MMIF_STORAGE_REPO
   if it resides elsewhere.
 
+TODO:
+- The assumption above is a bit clunky. Should replace it with using the code in
+  mmif_storage.create_example_storage() to avoid that dependency.
+
 """
 
 import time
@@ -30,22 +34,22 @@ ASSETS_FILE = 'tests/assets.txt'
 
 @pytest.fixture(scope='session')
 def empty_shack(tmpdir_factory):
-    d = tmpdir_factory.mktemp('shack')
-    shack = ClamShack(f'{str(d)}/empty-shack', assets=ASSETS_FILE)
+    tmpdir = tmpdir_factory.mktemp('shack')
+    shack = ClamShack(f'{str(tmpdir)}/empty-shack', assets=ASSETS_FILE)
     yield shack
 
 
 @pytest.fixture(scope='session')
 def example_shack(tmpdir_factory, mmif_storage_repo):
-    d = tmpdir_factory.mktemp('shack')
+    tmpdir = tmpdir_factory.mktemp('shack')
     repo = mmif_storage_repo
     if repo is None:
         repo = MMIF_STORAGE_REPO
-    shack = ClamShack(f'{str(d)}/example-shack', assets=ASSETS_FILE)
+    shack = ClamShack(f'{str(tmpdir)}/example-shack', assets=ASSETS_FILE)
     if DEBUG:
         print('\n>>> shack.location =', shack.location)
-    mmif_dir_source = Path(repo) / 'data/storage-example'
-    mmif_dir_target = Path(str(d)) / 'example-shack/mmif'
+    mmif_dir_source = Path(repo) / 'src/mmif_storage/data/storage-example'
+    mmif_dir_target = Path(str(tmpdir)) / 'example-shack/mmif'
     file_list = 'tests/storage-files.txt'
     copy_files(file_list, mmif_dir_source, mmif_dir_target)
     job1_file = shack.jobs_dir / 'j1-swt.txt'
@@ -54,7 +58,7 @@ def example_shack(tmpdir_factory, mmif_storage_repo):
     job2_file.write_text(Path('tests/j2-captioner.txt').read_text())
     # With files added after creation we need to reload the shack so that it
     # initializes properly.
-    shack = ClamShack(f'{str(d)}/example-shack', assets=None)
+    shack = ClamShack(f'{str(tmpdir)}/example-shack', assets=None)
     yield shack
 
 
@@ -131,7 +135,7 @@ class TestBasics():
         dummy_path_short = "dummy-app/v0.1/d41d8cd9/result.mmif"
         # Need to update the storage path on the mmif_storage package because it is
         # required when initializing the StoragePath instance.
-        mmif_storage.config.STORAGE_DIR = str(empty_shack.mmif_dir)
+        mmif_storage.config.MMIF_STORAGE_DIR = str(empty_shack.mmif_dir)
         storage_path = StoragePath(dummy_path)
         assert storage_path.rel_path == Path(dummy_path)
         assert storage_path.full_path == empty_shack.mmif_dir / dummy_path

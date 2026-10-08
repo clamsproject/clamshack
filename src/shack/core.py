@@ -4,11 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-from mmif_storage.model.storage import StoragePath
+from mmif_storage.storage import StoragePath
 
 import shack.run
 
-from shack.cli_utils import timestamp, path_as_string, path_as_tuples
+from shack.utils import timestamp, path_as_string, path_as_tuples
 
 
 class ClamShack:
@@ -71,7 +71,10 @@ class ClamShack:
 
     @property
     def name(self):
-        return self.location.name
+        if str(self.location) == '.':
+            return self.location.resolve().name
+        else:
+            return self.location.name
 
     @property
     def storage_path(self):

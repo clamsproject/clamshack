@@ -31,26 +31,17 @@ The names used to be CLAMS Shack and CLAMS Shell, but that felt clunky with the 
 
 ### Running the Shack and the Shell
 
-This requires Python 3.12 or later and the modules named in the requirements file. The shack is not yet a pip-installable package on PyPI so for now you need to do a couple of tedious things first:
-
-- Install the dependencies, preferably in a virtual environment.
-- Set up the environment file. It actually does not matter what is in this environment, but at the moment the file is still needed.
-
-This can  be done as follows from the top-level directory of this repository:
+This requires Python 3.12 or later and the modules named in the requirements file. The shack is not yet a pip-installable package on PyPI so startup is a bit more than one pip-install, do the following from the top-level directory of this repository:
 
 ```bash
-pip install -r requirements.txt
-pip install packages/mmif_storage-0.2.0.tar.gz
-cd src
-cp .env.sample .env
+pip install packages/mmif_storage_mv-0.2.0rc5.tar.gz
+pip install .[dev]
 ```
-
-After that, remain in the `src` directory and you can create and open shacks at your leisure.
 
 To **create** a shack using the example assets list:
 
 ```bash
-python -m shack.cli --shack <DIRECTORY> --assets <FILE>
+python -m shack.cli --dir <NEW_DIRECTORY> --assets data/example-assets.txt
 ```
 
 This creates a new directory and initializes a Shack in it, if the directory already exists then the code will exit with a warning.
@@ -58,10 +49,17 @@ This creates a new directory and initializes a Shack in it, if the directory alr
 To **open** an already existing Shack:
 
 ```bash
-python -m shack.cli --shack <DIRECTORY>
+python -m shack.cli --dir <DIRECTORY>
 ```
 
-After either command you end up in the ClamShell terminal where you have access to a bunch of commands as well as to the `shack` variable, which contains the Python ClamShack object. Type "help" or "?" to get a list of available commands and type "help COMMAND" or "? COMMAND" to get command-specific help.
+Instead of the above commands you can also use startup script:
+
+```bash
+shack --dir <NEW_DIRECTORY> --assets data/example-assets.txt
+shack --dir <DIRECTORY>
+```
+
+After opening or creating a shack you end up in the ClamShell terminal where you have access to a bunch of commands as well as to the `shack` variable, which contains the Python ClamShack object. Type "help" or "?" to get a list of available commands and type "help COMMAND" or "? COMMAND" to get command-specific help.
 
 The prompt in the terminal is a shell symbol followed by the name of the Shack:
 

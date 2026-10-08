@@ -6,7 +6,7 @@ from pathlib import Path
 
 from mmif import Mmif
 from mmif_storage.errors import StorageWarning
-from mmif_storage.model.storage import upload_mmif
+from mmif_storage.storage import upload_mmif
 
 from shack.cli import ClamShack, timestamp
 from shack.run import ClamsApp

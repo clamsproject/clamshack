@@ -5,20 +5,12 @@ You are now in the ClamShack, a tool for running CLAMS applications and managing
 Installation:
 
 ```bash
-pip install -r requirements.txt
-pip install packages/mmif_storage_mv-0.2.0rc1.tar.gz
-cp src/.env.sample src/.env
+pip install -e .[dev]
+pip install packages/mmif_storage_mv-0.2.0rc5.tar.gz
 ```
 
-Creating a shack:
-
+🗒 At the moment, installation is aimed mostly at developers. It will be streamlined once there is a reliable installable package. The above will allow you to use the ClamShack though, even if you have no interest in developing.
 
 See [docs/clamshack-manual.md](docs/clamshack-manual.md) on how to work with the tool.
 
-To run the tests do the following:
-
-```bash
-pip install -e .
-pip install pytest
-pytest
-```
+To run the tests just type `pytest`.
