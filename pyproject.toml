@@ -1,22 +1,23 @@
 [project]
-name = "clams-tool-shack"
+name = "clamshack"
 version = "0.1.0"
-description = "ClamShack tool for running CLAMS applications and managing resulting MMIF files"
+description = "Tool for running CLAMS applications and managing resulting MMIF files"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "clams-utils>=251011",
-    "dotenv>=0.9.9",
-    "flask==2.*",
-    #"inspector-mv",
-    "mmif-python==1.4.*",
-    "rich>=15.0.0",
-]
+    "mmif-storage==0.2.0",
+    "rich>=15.0.0"]
 
-#[tool.uv.sources]
-#inspector-mv = { path = "packages/inspector_mv-0.0.3.tar.gz" }
+[project.optional-dependencies]
+dev = ["pytest"]
 
-#[dependency-groups]
-#dev = [
-#    "pytest>=9.0.2",
-#]
+[project.scripts]
+shack = "shack:start_shack"
+
+[project.urls]
+homepage = "https://clams.ai"
+source = "https://github.com/clamsproject/clamshack"
+
+[tool.pytest]
+testpaths = ["tests"]
+pythonpath = ["src"]

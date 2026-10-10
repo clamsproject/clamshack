@@ -1,7 +1,10 @@
 data
 backup.sh
 find.sh
-venv
+dist
+build
+venv*
 __pycache__
 src/.env
+src/*.egg-info
 .DS_Store

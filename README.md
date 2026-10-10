@@ -1,5 +1,11 @@
 # ClamShack
 
-You are now in the ClamShack, a tool for running CLAMS applications and managing resulting MMIF files.
+A Python command line tool for running CLAMS applications and managing resulting MMIF files.
 
-See [docs/clamshack-manual.md](docs/clamshack-manual.md) on how to work with the tool.
+Installation:
+
+```bash
+pip install clamshack
+```
+
+See the [ClamShack manual](https://github.com/clamsproject/clamshack/blob/v0.1.0/docs/clamshack-manual.md) on how to work with the tool.

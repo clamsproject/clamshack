@@ -1,0 +1,15 @@
+/Users/Shared/data/aapb/sample
+
+public/video/cpb-aacip-4071f72dd46-clip1.mp4
+public/video/cpb-aacip-4071f72dd46-clip2.mp4
+public/video/cpb-aacip-4071f72dd46-clip3.mp4
+
+public/video/cpb-aacip-512-gb1xd0rn7s-clip1.mp4
+
+public/video/cpb-aacip-b45eb62bd60-clip1.mp4
+public/video/cpb-aacip-b45eb62bd60-clip2.mp4
+public/video/cpb-aacip-b45eb62bd60-clip3.mp4
+
+public/video/cpb-aacip-f551104e446-clip1.mp4
+public/video/cpb-aacip-f551104e446-clip2.mp4
+public/video/cpb-aacip-f551104e446-clip3.mp4

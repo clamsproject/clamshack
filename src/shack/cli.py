@@ -18,8 +18,8 @@ from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
 from mmif_storage.utils import load_json
 
 from shack import ClamShack
-from shack.cli_utils import console, messages, COMMANDS, timestamp, path_as_string
-from shack.cli_utils import info, warning, error, dribble, get_tree
+from shack.utils import console, messages, COMMANDS, timestamp, path_as_string
+from shack.utils import info, warning, error, dribble, get_tree
 
 
 DEBUG = False
@@ -264,7 +264,8 @@ class Shell(Cmd):
                 warning(f'Selection does not exist')
 
     def do_register(self, arg):
-        self.shack.register(arg)
+        result = self.shack.register(arg)
+        print(result)
 
     def do_jobs(self, arg):
         if arg:
@@ -583,7 +584,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     s_help = "Open the ClamShack in DIR or create it if the directory does not exist"
     a_help = "Add the assets in FILE to the ClamShack in DIR"
-    parser.add_argument('--shack', metavar='DIR', required=True, help=s_help)
+    parser.add_argument('--dir', metavar='DIR', default='.', help=s_help)
     parser.add_argument('--assets', metavar='FILE', default=None, help=a_help)
     parser.add_argument('--debug', action='store_true')
     return parser.parse_args()
@@ -594,4 +595,4 @@ if __name__ == '__main__':
     args = parse_arguments()
     if args.debug:
         DEBUG = True
-    Shell(ClamShack(args.shack, args.assets)).cmdloop()
+    Shell(ClamShack(args.dir, args.assets)).cmdloop()

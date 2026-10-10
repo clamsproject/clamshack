@@ -1,0 +1,6 @@
+register http://127.0.0.1:5001
+apps 0
+cd ~
+cd swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e/smolvlm2-captioner/v1.0/d41d8cd98f00b204e9800998ecf8427e
+params @example-params.json
+show

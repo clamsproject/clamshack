@@ -6,7 +6,7 @@ from pathlib import Path
 
 from mmif import Mmif
 from mmif_storage.errors import StorageWarning
-from mmif_storage.model.storage import upload_mmif
+from mmif_storage.storage import upload_mmif
 
 from shack.cli import ClamShack, timestamp
 from shack.run import ClamsApp
@@ -47,7 +47,7 @@ def get_input_files(shack: ClamShack, path: str) -> list:
     if path == '.':
         return shack.sources
     else:
-        p = shack.mmif_dir / shack.cwd() / args.path
+        p = shack.mmif_dir / shack.cwd() / path
         return [f for f in p.iterdir() if f.is_file() and f.suffix == '.mmif']
 
 
