@@ -1,6 +1,6 @@
 [project]
 name = "clamshack"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tool for running CLAMS applications and managing resulting MMIF files"
 readme = "README.md"
 requires-python = ">=3.12"
