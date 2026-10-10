@@ -1,3 +1,10 @@
+"""
+
+Does some imports for easy access and defines the functionality that is linked
+to the shack project script.
+
+"""
+
 import argparse
 
 from shack.core import ClamShack, ShackError

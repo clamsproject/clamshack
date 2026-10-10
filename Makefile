@@ -1,9 +1,10 @@
 clean:
 	rm -rf build
-	rm -rf src/clamshack_mv.egg-info
+	rm -rf src/*.egg-info
 	rm -rf tests/__pycache__
 
 build:
+	make clean
 	python -m build
 
 test:

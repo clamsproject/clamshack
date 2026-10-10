@@ -1,10 +1,11 @@
 [project]
-name = "clamshack-mv"
-version = "0.1.0.rc2"
-description = "ClamShack tool for running CLAMS applications and managing resulting MMIF files"
+name = "clamshack"
+version = "0.1.0"
+description = "Tool for running CLAMS applications and managing resulting MMIF files"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "mmif-storage==0.2.0",
     "rich>=15.0.0"]
 
 [project.optional-dependencies]
