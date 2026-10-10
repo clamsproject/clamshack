@@ -29,34 +29,36 @@ Assumptions:
 The names used to be CLAMS Shack and CLAMS Shell, but that felt clunky with the two esses. They were changed into ClamShack and ClamShell, which somewhat looses its connection to what the acronym stands for but does on the other hand feel so much better. ClamShack will often be abbreviated to Shack and ClamShell to Shell.
 
 
-### Running the Shack and the Shell
+### Requirements and Installation
 
-This requires Python 3.12 or later and the modules named in the requirements file. The shack is not yet a pip-installable package on PyPI so startup is a bit more than one pip-install, do the following from the top-level directory of this repository:
-
-```bash
-pip install packages/mmif_storage_mv-0.2.0rc5.tar.gz
-pip install .[dev]
-```
-
-To **create** a shack using the example assets list:
+This requires Python 3.12 or later and the `mmif-storage` and `rich` modules. The easiest way to install is to use:
 
 ```bash
-python -m shack.cli --dir <NEW_DIRECTORY> --assets data/example-assets.txt
+pip install clamshack
 ```
 
-This creates a new directory and initializes a Shack in it, if the directory already exists then the code will exit with a warning.
+
+### Using the Shack and the Shell
+
+You can directly access the package's cli code with `python -m shack.cli` or use the `shack` command script, here we do the latter. To **create** a shack using the example assets list:
+
+```bash
+shack --dir <NEW_DIRECTORY> --assets data/example-assets.txt
+```
+
+This creates a new directory and initializes a Shack in it, if the directory already exists then the code will exit with a warning. Note that for the above command you need access to the code in this repository.
 
 To **open** an already existing Shack:
 
 ```bash
-python -m shack.cli --dir <DIRECTORY>
+shack --dir <DIRECTORY>
 ```
 
-Instead of the above commands you can also use startup script:
+If you choose to use the other way to start a shack you would use:
 
 ```bash
-shack --dir <NEW_DIRECTORY> --assets data/example-assets.txt
-shack --dir <DIRECTORY>
+python -m shack.cli --dir <NEW_DIRECTORY> --assets data/example-assets.txt
+python -m shack.cli --dir <DIRECTORY>
 ```
 
 After opening or creating a shack you end up in the ClamShell terminal where you have access to a bunch of commands as well as to the `shack` variable, which contains the Python ClamShack object. Type "help" or "?" to get a list of available commands and type "help COMMAND" or "? COMMAND" to get command-specific help.
