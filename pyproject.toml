@@ -5,7 +5,7 @@ description = "Tool for running CLAMS applications and managing resulting MMIF f
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "mmif-storage==0.2.0",
+    "mmif-storage==0.2.1",
     "rich>=15.0.0"]
 
 [project.optional-dependencies]

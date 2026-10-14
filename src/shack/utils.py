@@ -1,6 +1,6 @@
 """
 
-Assorted utilities for the cli script, a few are also used elsewhere.
+Assorted utilities for the core code and the cli code.
 
 """
 

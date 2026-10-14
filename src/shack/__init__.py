@@ -8,8 +8,9 @@ to the shack project script.
 import argparse
 
 from shack.core import ClamShack, ShackError
-from shack.core import History, Assets, StoragePath, MmifIndex, Job
+from shack.core import History, Assets, MmifIndex, Job
 from shack.cli import Shell
+from shack.run import ClamsApp
 
 
 def start_shack():

@@ -4,7 +4,8 @@ Testing the ClamShack.
 
 This has two requirements:
 
-- A spacy-wrapper CLAMS app running in a container using port 5001.
+- A spacy-wrapper CLAMS app running in a container using port 5001. The spacy
+  version used here is v2.3.
 - A local copy of the mmif-storage repository. The tests assume that there is a
   mmif-storage repository as a sister to this repository, edit MMIF_STORAGE_REPO
   if it resides elsewhere.
@@ -24,12 +25,14 @@ import pytest
 import mmif_storage
 from mmif_storage import StoragePath
 
-from shack import ClamShack, History, Job, ShackError
+from shack import ClamShack, ClamsApp, History, Job, ShackError
 
 
 DEBUG = False
 MMIF_STORAGE_REPO = '../mmif-storage'
 ASSETS_FILE = 'tests/assets.txt'
+APP_NAME = 'http://apps.clams.ai/spacy-wrapper/v2.3'
+APP_URL = 'http://127.0.0.1:5001'
 
 
 @pytest.fixture(scope='session')
@@ -166,6 +169,13 @@ class TestBasics():
         assert job.time_elapsed() == 5
         assert job.info_guids() == [("guid-1", "2.4183", "SUCCES")]
 
+    def test_register_app(self, empty_shack: ClamShack):
+        """This test is mostly to check whether spacy is running."""
+        empty_shack.register(APP_URL)
+        app = ClamsApp(name=APP_NAME, url=APP_URL)
+        assert APP_NAME in empty_shack.apps
+        assert app.metadata()['identifier'] == APP_NAME
+
 
 class TestShack():
 
@@ -178,6 +188,14 @@ class TestShack():
         assert settings['parameters'] == {}
         assert settings['clams_app'] == None
         assert settings['sources'] == 2
+
+    def test_deep_dir(self, example_shack):
+        dirs = example_shack.subdirs(deep=True)
+        assert len(dirs) == 1
+        assert len(dirs[0].parts) == 3
+        assert dirs[0].parts[0] == 'swt-detection'
+        assert dirs[0].parts[1] == 'v8.6'
+        assert dirs[0].parts[2] == 'd41d8cd98f00b204e9800998ecf8427e'
 
     def test_search(self, example_shack):
         # TODO: add params search, maybe embedded in the test_run_job so that there
@@ -195,16 +213,14 @@ class TestShack():
         """A typical way to run an app manually is to search for the input directory
         given an app name, cd into it, set the parameters and then register and
         select an application to run. This funciton is testing those steps."""
-        app_name = 'http://apps.clams.ai/spacy-wrapper/v2.3'
-        app_url = '127.0.0.1:5001'
         app_search_result = example_shack.search('capt', 'app')
         example_shack.cd(app_search_result[0])
         example_shack.add_parameter('pretty', True)
-        example_shack.register(app_url)
-        example_shack.select_app(app_name)
+        example_shack.register(APP_URL)
+        example_shack.select_app(APP_NAME)
         settings = {k:v for k,v in example_shack.get_settings()}
-        assert settings['clams_app'] == app_name
-        assert app_name in example_shack.apps
+        assert settings['clams_app'] == APP_NAME
+        assert APP_NAME in example_shack.apps
         assert settings['parameters']['pretty'] == 'True'
         assert 'smolvlm2-captioner' in Path(settings['path']).parts
 

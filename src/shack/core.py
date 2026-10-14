@@ -4,10 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-from mmif_storage.storage import StoragePath
+import mmif_storage
 
 import shack.run
 
+from shack.errors import ShackError
 from shack.utils import timestamp, path_as_string, path_as_tuples
 
 
@@ -29,6 +30,8 @@ class ClamShack:
         self.history_file = self.location / '.history'
         self.queue_file = self.location / '.queue'
         self.error_file = self.location / '.errors'
+        # Need to tell the mmif_storage where its data are
+        mmif_storage.config.MMIF_STORAGE_DIR = self.mmif_dir
         if assets is not None:
             if self.location.exists():
                 exit(f'Cannot create a ClamShack: "{self.location}" already exists')
@@ -78,7 +81,7 @@ class ClamShack:
 
     @property
     def storage_path(self):
-        return StoragePath(self, self.path)
+        return mmif_storage.StoragePath(self.path)
 
     @property
     def assets(self) -> list[Path]:
@@ -179,11 +182,15 @@ class ClamShack:
     def cwd(self) -> str:
         return self.path
 
-    def subdirs(self) -> list[Path]:
-        """Return the sorted subdirectories in the current path."""
-        path = self.mmif_dir / self.path
-        subdirs = [Path(d.name) for d in [d for d in path.iterdir() if d.is_dir()]]
-        return list(sorted(subdirs))
+    def subdirs(self, deep=False) -> list[Path]:
+        """Return the sorted subdirectories in the current path. If deep=True then
+        return the directories found at three levels deep."""
+        if deep:
+            dirs = [d[0] for d in self.storage_path.ddir()]
+        else:
+            p = self.storage_path
+            dirs = [Path(d.name) for d in [d for d in p.iterdir() if d.is_dir()]]
+        return list(sorted(dirs))
 
     def files(self) -> list[Path]:
         """Return the sorted files in the current path."""
@@ -243,7 +250,7 @@ class ClamShack:
     def prune(self):
         if str(self.path) in ('.', '~', ''):
             raise ShackError('Cannot delete the MMIF root directory')
-        spath = StoragePath(self, str(self.cwd()))
+        spath = mmif_storage.StoragePath(self, str(self.cwd()))
         spath.rmtree()
         self.reindex()
         self.cd('..')
@@ -262,9 +269,6 @@ class ClamShack:
             ('path', str(self.path)),
             ('clams_app', app),
             ('parameters', self.params)]
-
-
-class ShackError(Exception): pass
 
 
 class History:
@@ -454,12 +458,12 @@ class MmifIndex:
                 results.append(d)
         return results
 
-    def remove_dir(self, path: StoragePath):
+    def remove_dir(self, path: mmif_storage.StoragePath):
         """Remove the directory path from the self.dirs set."""
         #print('-D-', path_as_string(path.rel_path))
         self.dirs.remove(path.rel_path)
 
-    def remove_file(self, path: StoragePath):
+    def remove_file(self, path: mmif_storage.StoragePath):
         """Remove the file path from all lists in the self.data dictionary."""
         #print('-F-', path.name)
         for fname in self.data:

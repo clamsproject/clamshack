@@ -8,4 +8,5 @@ build:
 	python -m build
 
 test:
+	make clean
 	pytest --disable-warnings --tb=line
