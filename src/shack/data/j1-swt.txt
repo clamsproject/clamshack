@@ -1,0 +1,6 @@
+STARTED	2026-06-20T09:00:59
+COMMAND	python run_batch.py j1-swt --location shacks/aapb-public-fragments --path . --batch default --app-name http://apps.clams.ai/swt-detection/v8.6 --app-url http://127.0.0.1:5050 --params {}
+PROCESS_ID	379301
+GUID	cpb-aacip-f551104e446-clip1	2.3727	SUCCES
+GUID	cpb-aacip-f551104e446-clip2	2.0287	SUCCES
+DONE	2026-06-20T09:01:26

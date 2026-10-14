@@ -1,0 +1,6 @@
+STARTED	2026-06-20T09:02:13
+COMMAND	python run_batch.py j2-captioner --location shacks/aapb-public-fragments --path swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e --batch default --app-name http://apps.clams.ai/smolvlm2-captioner/v1.0 --app-url http://127.0.0.1:5051 --params {}
+PROCESS_ID	380864
+GUID	cpb-aacip-f551104e446-clip1	0.7176	SUCCES
+GUID	cpb-aacip-f551104e446-clip2	0.2102	SUCCES
+DONE	2026-06-20T09:02:31
