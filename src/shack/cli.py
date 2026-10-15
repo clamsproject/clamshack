@@ -18,6 +18,7 @@ from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
 from mmif_storage.utils import load_json
 
 from shack import ClamShack
+from shack.errors import ShackError
 from shack.utils import console, messages, COMMANDS, timestamp, path_as_string
 from shack.utils import info, warning, error, dribble, get_tree
 
@@ -380,8 +381,7 @@ class Shell(Cmd):
             else:
                 print('\n No directories were saved.')
         elif arg == '-d':
-            spath = self.shack.storage_path
-            dirs = spath.ddir()
+            dirs = self.shack.subdirs(deep=True)
             p = path_as_string(self.shack.cwd())
             console.print(Panel(f'Expanded sub directories at "{p}"'))
             self.saved_directories = {}

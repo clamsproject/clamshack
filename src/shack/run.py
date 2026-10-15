@@ -21,6 +21,8 @@ from random import Random
 from mmif import Mmif, AnnotationTypes, DocumentTypes
 from mmif.serialize.annotation import Annotation, Document
 
+from shack.errors import ShackError
+
 
 APPS = {}
 
@@ -66,11 +68,11 @@ def register_app(url: str):
             APPS[app_id] = url
             return f'Registered {app_id}'
         else:
-            return 'The URL does not point to a CLAMS App'
+            raise ShackError('Registration failed: the URL does not point to a CLAMS App')
     except requests.exceptions.ConnectTimeout:
-        print('Connection timeout')
+        raise ShackError('Registration failed: connection timeout')
     except Exception:
-        print('Unexpected output')
+        raise ShackError('Registration failed: unexpected output')
 
 
 def run_job(timestamp: str, name: str, shack: 'ClamShack') -> str:

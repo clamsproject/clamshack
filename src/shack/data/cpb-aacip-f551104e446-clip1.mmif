@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "mmif": "http://mmif.clams.ai/1.1.1"
+  },
+  "documents": [
+    {
+      "@type": "http://clams.ai/vocabulary/type/VideoDocument/v2",
+      "properties": {
+        "mime": "video/mp4",
+        "id": "d1",
+        "location": "file:///data/public/video/cpb-aacip-f551104e446-clip1.mp4"
+      }
+    }
+  ],
+  "views": []
+}

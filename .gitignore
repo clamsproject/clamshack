@@ -8,3 +8,4 @@ __pycache__
 src/.env
 src/*.egg-info
 .DS_Store
+tmp*

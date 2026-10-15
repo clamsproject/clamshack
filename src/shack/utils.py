@@ -1,6 +1,6 @@
 """
 
-Assorted utilities for the cli script, a few are also used elsewhere.
+Assorted utilities for the core code and the cli code.
 
 """
 
@@ -18,7 +18,8 @@ from rich.filesize import decimal
 from rich.markup import escape
 
 
-console = console.Console()
+# The record=True option is needed for the tests to work
+console = console.Console(record=True)
 
 
 messages = { 'bye': 'Bye bye sailor'}
