@@ -23,10 +23,18 @@ def start_shack():
     Shell(ClamShack(args.dir, args.assets)).cmdloop()
 
 
-def create_shack_example():
-    # TODO: with this example, running "dir -s" gives an error
-    args = parse_create_shack_arguments()
-    directory = pathlib.Path(args.dir)
+def create_shack_example(directory=None):
+    """Create a ClamShack at the given directory or the directory specified by the
+    command line options. Does not include a good way to include the assets."""
+    # TODO. Not dealing with the assets has not been a problem yet because the tests
+    # don't require it and I have only used the example for testing processing that
+    # does not require the assets themselves, only previous views. May want to look
+    # into this more for a fully operational example shack.
+    if directory is None:
+        args = parse_create_shack_arguments()
+        directory = pathlib.Path(args.dir)
+    else:
+        directory = pathlib.Path(directory)
     if directory.exists():
         return f'Directory {args.dir} allready exists, not creating example'
     mmif_storage.create_storage_example(directory / 'mmif')

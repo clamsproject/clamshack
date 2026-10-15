@@ -18,7 +18,8 @@ from rich.filesize import decimal
 from rich.markup import escape
 
 
-console = console.Console()
+# The record=True option is needed for the tests to work
+console = console.Console(record=True)
 
 
 messages = { 'bye': 'Bye bye sailor'}

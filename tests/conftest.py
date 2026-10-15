@@ -5,6 +5,9 @@ import pytest
 # Take an extra argument for pytest to set the location of the mmif-storage
 # repository.
 #
+# With the newly introduced use of the example shack this now appears to be
+# deprecated, but keeping it here for now.
+
 # See:
 # - https://stackoverflow.com/a/55301318
 # - https://docs.pytest.org/en/7.1.x/example/simple.html

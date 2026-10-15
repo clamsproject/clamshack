@@ -2,17 +2,12 @@
 
 Testing the ClamShack.
 
-This has two requirements:
+It requires a spacy-wrapper CLAMS app running in a container using port 5001. The
+spacy version used here is v2.3. Edit APP_URL if your spacy is running on another
+port.
 
-- A spacy-wrapper CLAMS app running in a container using port 5001. The spacy
-  version used here is v2.3.
-- A local copy of the mmif-storage repository. The tests assume that there is a
-  mmif-storage repository as a sister to this repository, edit MMIF_STORAGE_REPO
-  if it resides elsewhere.
-
-TODO:
-- The assumption above is a bit clunky. Should replace it with using the code in
-  mmif_storage.create_example_storage() to avoid that dependency.
+This uses the code to create an example shack. It does not care whether the sources
+in shack actually exist.
 
 """
 
@@ -25,11 +20,13 @@ import pytest
 import mmif_storage
 from mmif_storage import StoragePath
 
-from shack import ClamShack, ClamsApp, History, Job, ShackError
+from shack import Shell, ClamShack, ClamsApp, History, Job, ShackError
+from shack import create_shack_example
+
+from shack.utils import console
 
 
 DEBUG = False
-MMIF_STORAGE_REPO = '../mmif-storage'
 ASSETS_FILE = 'tests/assets.txt'
 APP_NAME = 'http://apps.clams.ai/spacy-wrapper/v2.3'
 APP_URL = 'http://127.0.0.1:5001'
@@ -38,46 +35,26 @@ APP_URL = 'http://127.0.0.1:5001'
 @pytest.fixture(scope='session')
 def empty_shack(tmpdir_factory):
     tmpdir = tmpdir_factory.mktemp('shack')
-    shack = ClamShack(f'{str(tmpdir)}/empty-shack', assets=ASSETS_FILE)
-    yield shack
+    yield ClamShack(f'{str(tmpdir)}/empty-shack', assets=ASSETS_FILE)
 
 
 @pytest.fixture(scope='session')
-def example_shack(tmpdir_factory, mmif_storage_repo):
-    tmpdir = tmpdir_factory.mktemp('shack')
-    repo = mmif_storage_repo
-    if repo is None:
-        repo = MMIF_STORAGE_REPO
-    shack = ClamShack(f'{str(tmpdir)}/example-shack', assets=ASSETS_FILE)
-    if DEBUG:
-        print('\n>>> shack.location =', shack.location)
-    mmif_dir_source = Path(repo) / 'src/mmif_storage/data/storage-example'
-    mmif_dir_target = Path(str(tmpdir)) / 'example-shack/mmif'
-    file_list = 'tests/storage-files.txt'
-    copy_files(file_list, mmif_dir_source, mmif_dir_target)
-    job1_file = shack.jobs_dir / 'j1-swt.txt'
-    job2_file = shack.jobs_dir / 'j2-captioner.txt'
-    job1_file.write_text(Path('tests/j1-swt.txt').read_text())
-    job2_file.write_text(Path('tests/j2-captioner.txt').read_text())
-    # With files added after creation we need to reload the shack so that it
-    # initializes properly.
-    shack = ClamShack(f'{str(tmpdir)}/example-shack', assets=None)
-    yield shack
+def example_shack(tmpdir_factory):
+    yield create_temporary_shack(tmpdir_factory, 'example-shack1')
 
 
-def copy_files(file_list: str, indir: str, outdir: str):
-    """Copy a list of file paths in a file from one directory to the other,
-    preserving the paths."""
-    # NOTE. This was adapted from ../mmif_storage/tests/utils.py
-    with open(file_list) as fh:
-        for line in fh:
-            line = line.strip()
-            if line.startswith('#') or not line:
-                continue
-            f_in = Path(indir) / line.strip()
-            f_out = Path(outdir) / line.strip()
-            f_out.parent.mkdir(parents=True, exist_ok=True)
-            f_out.write_text(f_in.read_text())
+@pytest.fixture(scope='session')
+def example_shell(tmpdir_factory):
+    shack = create_temporary_shack(tmpdir_factory, 'example-shack2')
+    yield Shell(shack)
+
+
+def create_temporary_shack(tmpdir_factory, name: str) -> ClamShack:
+    """Utility method just for the tests. It creates an example shack with the
+    given name under a temporary directory."""
+    shack_location = f'{str(tmpdir_factory.mktemp('shack'))}/{name}'
+    create_shack_example(shack_location)
+    return ClamShack(shack_location, assets=None)
 
 
 class TestBasics():
@@ -244,6 +221,22 @@ class TestShack():
         search_results = example_shack.search(['pretty=True'], 'params')
         assert len(search_results) == 1
         assert 'spacy-wrapper' in search_results[0].parts
+
+
+class TestShell():
+
+    """Just a couple to test whether the output of various shell commands is as
+    expected. Some of these tests require that the rich console in the utils
+    module is created with the record option set to True."""
+
+    def test_show(self, example_shell):
+        example_shell.onecmd('show')
+        assert 'Shack settings and information' in console.export_text()
+
+    def test_cd(self, example_shell, capsys):
+        example_shell.onecmd('cd swt-detection')
+        captured = capsys.readouterr()
+        assert 'swt-detection' in captured.out
 
 
 def print_settings(shack: ClamShack):
