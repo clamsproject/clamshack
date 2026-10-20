@@ -18,6 +18,7 @@ from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
 from mmif_storage.utils import load_json
 
 from shack import ClamShack
+from shack.annotations import Repository
 from shack.errors import ShackError
 from shack.utils import console, messages, COMMANDS, timestamp, path_as_string
 from shack.utils import info, warning, error, dribble, get_tree
@@ -72,6 +73,9 @@ class Shell(Cmd):
         # Each time we got a couple of directories from a search we save it so we can
         # use it in the goto command.
         self.saved_directories = {}
+        # Access to the annotations and evaluations repositories
+        self.annotations = None
+        self.evaluations = None
         # The session log stores commands used and indicates when errors occurred,
         # the errors list is for errors encountered during the current session.
         self.log = []
@@ -82,6 +86,8 @@ class Shell(Cmd):
 
     def hidden_command(self, command: str):
         if command.startswith('t_'):
+            return True
+        if command.startswith('t') and command[1:].isnumeric():
             return True
         return command in self.__class__.hidden_commands
 
@@ -361,7 +367,7 @@ class Shell(Cmd):
                     self.cmdqueue.append(f'echo {c}')
                     self.cmdqueue.append(c)
             else:
-                warning(f'Script file "{arg}" does not exist')
+                warning(f'Script file "{arg}" is not a file')
         else:
             warning("You need to specify a script to source.")
 
@@ -521,7 +527,8 @@ class Shell(Cmd):
         # deprecated.
         print()
 
-    ## Undocumented actions for debugging and development
+    ## Undocumented actions for debugging and development, do not rely on the 
+    ## continued presence of any of these.
 
     def do_s(self, arg):
         self.cmdqueue.append('source example-script.txt')
@@ -579,12 +586,31 @@ class Shell(Cmd):
     def do_w(self, arg):
         self.cmdqueue.append('source s2.txt')
 
+    def do_t1(self, arg):
+        self.annotations = Repository('../aapb/aapb-annotations')
+        print(self.annotations)
+        self.shack.cd('swt-detection/v8.6/d41d8cd98f00b204e9800998ecf8427e')
+        identifiers = [f.stem for f in self.shack.files()]
+        identifiers.append('cpb-aacip-0009a7e5474')
+        identifiers.append('cpb-aacip-00a9ed7f2ba')
+        selected_project = self.annotations.get_project('scene-recognition')
+        print(selected_project)
+        for identifier in identifiers:
+            present = '+' if identifier in selected_project.gold_names else '-'
+            data_drop = ''
+            if present == '+':
+                for drop in selected_project.drops:
+                    if identifier in drop:
+                        data_drop = drop.name
+                        break
+            print(f'{present} {identifier} {data_drop}')
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    s_help = "Open the ClamShack in DIR or create it if the directory does not exist"
+    d_help = "Open the ClamShack in DIR or create it if the directory does not exist"
     a_help = "Add the assets in FILE to the ClamShack in DIR"
-    parser.add_argument('--dir', metavar='DIR', default='.', help=s_help)
+    parser.add_argument('--dir', metavar='DIR', default='.', help=d_help)
     parser.add_argument('--assets', metavar='FILE', default=None, help=a_help)
     parser.add_argument('--debug', action='store_true')
     return parser.parse_args()

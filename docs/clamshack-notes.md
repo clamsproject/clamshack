@@ -146,6 +146,40 @@ clamshack> register http://127.0.0.1:5051
 clamshack> register http://127.0.0.1:5052
 ```
 
+### Evaluation
+
+Some experiments to get evaluation going from the shack. First do some processing on aristotle:
+
+1. Select some assets that are from one of the annotation batches.
+1. And some that were not annotated.
+1. Get an SWT container running (see above).
+1. Create a shack and run SWT on all assets collected.
+
+Then wrap up the shack and move it to a more convenient place, from there:
+
+1. Add an evaluate command.
+2. Which checks what guids are available on [aapb-annotation](https://github.com/clamsproject/aapb-annotations).
+3. And uses the code on [aapb-evaluation](https://github.com/clamsproject/aapb-evaluations).
+
+This may be helpful:
+
+```
+clams source video:/Users/marc/Documents/git/clams/app-swt-detection/modeling/data/cpb-aacip-507-028pc2tp2z.mp4 > ex-aapb-50.mmif
+clams source video:/Users/marc/Documents/git/clams/app-swt-detection/modeling/data/cpb-aacip-690722078b2.mp4 > ex-aapb-69.mmif
+clams source video:/Users/marc/Documents/git/clams/app-swt-detection/modeling/data/cpb-aacip-75-72b8h82x.mp4 > ex-aapb-75.mmif
+
+curl "localhost:5000?pretty=True&minTimeframeScore=0.5&stopAt=10000" -d @ex-aapb-50.mmif
+
+curl "localhost:5000?pretty=True&minTimeframeScore=0.5" -d @ex-aapb-50.mmif > ex-aapb-50.json
+curl "localhost:5000?pretty=True&minTimeframeScore=0.5" -d @ex-aapb-69.mmif > ex-aapb-69.json
+curl "localhost:5000?pretty=True&minTimeframeScore=0.5" -d @ex-aapb-75.mmif > ex-aapb-75.json
+
+python cli.py --metadata
+
+python cli.py --input example-mmif-local.json --output out.json --modelName 20240409-093229.convnext_tiny --map B:bars S:slate --pretty True
+cat example-mmif-local.json | python cli.py --output out.json --modelName 20240409-093229.convnext_tiny --map B:bars S:slate --pretty True
+cat example-mmif-local.json | python cli.py --modelName 20240409-093229.convnext_tiny --map B:bars S:slate --pretty True > out2.json
+```
 
 ### Search
 

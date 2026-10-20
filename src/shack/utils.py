@@ -4,6 +4,9 @@ Assorted utilities for the core code and the cli code.
 
 """
 
+# TODO: should be refactored a bit since it makes no sens that the commands and the
+# messages are in here.
+
 
 import os
 import pathlib
@@ -241,6 +244,30 @@ def path_as_tuples(p: pathlib.Path) -> list[tuple]:
     return [parts[i:i + 3] for i in range(0, len(parts), 3)]
 
 
+class FileSystemNode:
+
+    """Abstract class which provides some intialization, sorting and other common
+    functionality for path-like classes from the annotation and evaluation modules.
+
+    name  --  the name of the directory or file
+    path  --  the path of the node on the local working directory of the repository
+
+    """
+
+    # Note. This was originally taken from the annotation utilities in the dashboard
+    # repository (internal-anno-eval-dashboard).
 
 
+    def __init__(self, path: pathlib.Path):
+        self.name = path.name
+        self.path = path
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def __str__(self):
+        return f'<{self.__class__.__name__} {self.name}>'
 
