@@ -166,6 +166,12 @@ class TestShack():
         assert settings['clams_app'] == None
         assert settings['sources'] == 2
 
+    def test_identifiers(self, example_shack):
+        identifiers = example_shack.identifiers
+        assert len(identifiers) == 2
+        assert 'cpb-aacip-f551104e446-clip1' in identifiers
+        assert 'cpb-aacip-f551104e446-clip2' in identifiers
+
     def test_deep_dir(self, example_shack):
         dirs = example_shack.subdirs(deep=True)
         assert len(dirs) == 1

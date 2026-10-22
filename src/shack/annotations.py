@@ -9,8 +9,8 @@ to the Repository class:
 >>> Repository('PATH-TO_REPO')
 
 The repository and the objects in it refer to the trees and blobs in the repository
-as well as to the local paths in the working directory. But typically requested data
-are retrieved from the trees and blobs, not from the local paths.
+as well as to the local paths in the working directory. Requested data are retrieved
+from the trees and blobs, not from the local paths.
 
 """
 
@@ -39,11 +39,6 @@ from shack import utils
 
 
 Comparison = namedtuple('Comparison', ['in_both', 'in_first', 'in_second'])
-
-
-# TODO: add GoldFile class (similar to Batch, which is a single file)
-# TODO: rename Batch into BatchFile
-# TODO: introduce RepoFile as super of GOld and Batch
 
 
 class Repository:
@@ -127,7 +122,7 @@ class Repository:
 
     @property
     def batch_names(self) -> list[str]:
-        return sorted(self._batches.keys())
+        return list(sorted(self._batches.keys()))
 
     @property
     def projects(self) -> list[Project]:
@@ -251,6 +246,12 @@ class Project(utils.FileSystemNode):
     def drop_names(self):
         return list(sorted(self._drops))
 
+    def get_gold(self, gold_name: str):
+        return self._golds.get(drop_name)
+
+    def get_drop(self, drop_name: str):
+        return self._drops.get(drop_name)
+
     def __str__(self):
         return (
             f'<Project "{self.name}"'
@@ -266,9 +267,6 @@ class Project(utils.FileSystemNode):
     def get_gold_file(self, filename: str):
         return self._golds.get(filename)
 
-    def gold_file_content(self, filename: str):
-        print('---',filename)
-        return read_text(self.get_gold_file(filename))
 
     '''
     Some methods that were defined in the old Task class and that may be relevant
@@ -325,6 +323,8 @@ class DataDrop(utils.FileSystemNode):
 
     """
 
+    # TODO: introduce DropFile as a new class
+    
     def __init__(self, repo: Repository, project: Project, path: Path, tree: Tree):
         super().__init__(path)
         self.repository = repo
@@ -355,6 +355,17 @@ class DataDrop(utils.FileSystemNode):
 
     def file_content(self, filename: str):
         return read_text(self.get_file(filename))
+
+    def overlap(self, identifiers: list[str]) -> list[str]:
+        # TODO: remove added identifier
+        identifiers = set(identifiers)
+        identifiers.add('cpb-aacip-0009a7e5474')
+        # TODO: use intersection
+        overlap = []
+        for f in self.file_names:
+            if f in identifiers:
+                overlap.append(f)
+        return overlap
 
 
 class RepoFile(utils.FileSystemNode):
@@ -402,7 +413,7 @@ class BatchFile(RepoFile):
         self._comment = None
 
     def __str__(self):
-        return f'<BatchFile {self.name} files={len(self)}>'
+        return f'<BatchFile "{self.name}" files={len(self)}>'
 
     def __len__(self):
         return len(self.files)

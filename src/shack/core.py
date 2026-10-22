@@ -92,6 +92,12 @@ class ClamShack:
         return list(sorted(self._assets.sources.values()))
 
     @property
+    def identifiers(self):
+        """Return the identifiers of all assets/sources in the shack, assumes that
+        the identifiers can be generated from the asset names."""
+        return [path.stem for path in self.assets]
+    
+    @property
     def app_names(self) -> list:
         return list(sorted(self.apps.keys()))
 
