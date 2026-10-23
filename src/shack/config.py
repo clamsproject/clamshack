@@ -2,23 +2,36 @@
 messages = { 'bye': 'Bye bye sailor'}
 
 
+# Names of tasks defined in the aapb-evaluations repository
+TASKS = {
+    'AutomaticSpeechRecognition', 
+    'asr_eval', 
+    'ForcedAlignment', 
+    'KeyedInformationExtraction', 
+    'NamedEntityGrounding', 
+    'NamedEntityRecognition', 
+    'TextRecognition', 
+    'TimeFrameLabeling', 
+    'TimePointLabeling'
+}
+
+
 COMMANDS = {
+
+    # General command help for the command line interpreters
 
     'help': (
         'help\n help COMMAND',
         'Print list of available commands or print help for a command.'),
-
-    'help_all': (
-        'help_all',
-        'Print all available commands with their help message.'),
 
     'history': (
         'history\n history reset',
         'Print the command history or reset it.'),
 }
 
-
 SHELL_COMMANDS = {
+
+    # Command help for commands specifically for the Shell CLI
 
     'apps': (
         'apps\n apps (APP_INDEX | APP_NAME)',
@@ -104,7 +117,7 @@ SHELL_COMMANDS = {
 
     'quit': (
         'quit',
-        'Exit the ClamShack.'),
+        'Exit the ClamShell.'),
 
     'search': (
         'search assets TERM'
@@ -126,30 +139,47 @@ SHELL_COMMANDS = {
 }
 
 
-ASHELL_COMMANDS = {
+ESHELL_COMMANDS = {
 
-    'load': ('load DIRECTORY', 'Load the annotation repository from disk.'),
+    # Command help for commands specifically for the EvaluationShell CLI
+
+    'load': (
+        'load DIRECTORY',
+        'Load the annotation or evaluation repository from disk.'),
+
+    'show': (
+        'show\n show error|errors\n show batch (INT|STR)?\n show task (INT|STR)',
+        'Show current Evaluation settings or show the last or all errors. '
+        'With the batch option, show the selected batch with its comment or do that '
+        'for the batch identified by name or by the index in the batches list. With '
+        'the task option, show the selected task with its comment or do that for the '
+        'task identified by name or by the index in the tasks list.'),
 
     'projects': (
         'projects'
-        '\n projects INT|STR'
-        '\n search params (param=value)+',
+        '\n projects INT|STR',
         'List all projects in the annotation repository or select a projects using'
         ' the project name or its index in the project dictionary.'),
 
     'batches': (
         'batches'
-        '\n batches INT|STR'
-        '\n search params (param=value)+',
-        'List all batches in the annotation repository or select a batches using'
-        ' the project name or its index in the project dictionary.'),
+        '\n batches INT|STR',
+        'List all batches in the annotation repository or select a batch using'
+        ' the batch name or its index in the batch dictionary.'),
 
-    'overlap': (
-        'overlap',
-        'Calculate the overlap of the sources in the shack with data drops in'
-        ' the selected project')    
+    'tasks': (
+        'tasks'
+        '\n tasks INT|STR',
+        'List all tasks in the evaluation repository or select a task using'
+        ' the task name or its index in the task dictionary.'),
+
+    'quit': (
+        'quit',
+        'Exit the EvaluationShell and return the current settings from that shell.')
 }
 
 
 SHELL_COMMANDS.update(COMMANDS)
-ASHELL_COMMANDS.update(COMMANDS)
+ESHELL_COMMANDS.update(COMMANDS)
+
+

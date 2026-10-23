@@ -41,7 +41,7 @@ from shack import utils
 Comparison = namedtuple('Comparison', ['in_both', 'in_first', 'in_second'])
 
 
-class Repository:
+class AnnotationRepository:
 
     """Class to give access to data in the annotation repository. All data are
     taken from the repository itself and not the checked out working directory.
@@ -105,7 +105,7 @@ class Repository:
  
     def __str__(self):
         return (
-            f'<{self.__class__.__name__} "{self.path.name}" '
+            f'<{self.__class__.__name__} "{str(self.path)}" '
             f'branch={self.branch} projects={len(self._projects)}>')
 
     @property
@@ -134,11 +134,11 @@ class Repository:
 
     def get_batch(self, name: str) -> Batch:
         """Retrieve a batch from the batches dictionary."""
-        return self._batches[name]
+        return self._batches.get(name)
 
     def get_project(self, name: str) -> Project:
-        """Retrieve a roject from the projects dictionary."""
-        return self._projects[name]
+        """Retrieve a project from the projects dictionary."""
+        return self._projects.get(name)
 
     def set_branch(self, branch_name: str):
         """Select a new branch and update the root tree and all previously
@@ -191,9 +191,9 @@ class Project(utils.FileSystemNode):
     def __init__ (self, repo: Repository, path: Path, tree: Tree):
         super().__init__(path)
         self.repository = repo
-        self.path = path
+        #self.path = path
         self.tree = tree
-        self.name = tree.name
+        #self.name = tree.name
         self.load()
 
     def load(self):
@@ -230,6 +230,18 @@ class Project(utils.FileSystemNode):
                 path = self.repository.path / tree.path
                 self._drops[tree.name] = DataDrop(self.repository, self, path, tree)
 
+    def __str__(self):
+        return (
+            f'<Project "{self.name}"'
+            f' golds={len(self.golds)}'
+            f' datadrops={len(self._drops)}>')
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __lt__(self, other):
+        return self.name < other.name
+
     @property
     def golds(self):
         return list(self._golds.values())
@@ -252,21 +264,8 @@ class Project(utils.FileSystemNode):
     def get_drop(self, drop_name: str):
         return self._drops.get(drop_name)
 
-    def __str__(self):
-        return (
-            f'<Project "{self.name}"'
-            f' golds={len(self.golds)}'
-            f' datadrops={len(self._drops)}>')
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-    def __lt__(self, other):
-        return self.name < other.name
-
     def get_gold_file(self, filename: str):
         return self._golds.get(filename)
-
 
     '''
     Some methods that were defined in the old Task class and that may be relevant
@@ -356,17 +355,6 @@ class DataDrop(utils.FileSystemNode):
     def file_content(self, filename: str):
         return read_text(self.get_file(filename))
 
-    def overlap(self, identifiers: list[str]) -> list[str]:
-        # TODO: remove added identifier
-        identifiers = set(identifiers)
-        identifiers.add('cpb-aacip-0009a7e5474')
-        # TODO: use intersection
-        overlap = []
-        for f in self.file_names:
-            if f in identifiers:
-                overlap.append(f)
-        return overlap
-
 
 class RepoFile(utils.FileSystemNode):
 
@@ -441,6 +429,15 @@ class BatchFile(RepoFile):
             self._comment = comment.getvalue()
             #print(f'COMMENT:\n{self._comment}<<<')
         return self._comment
+
+    def overlap(self, identifiers: list[str]) -> list[str]:
+        identifiers = set(identifiers)
+        # TODO: use intersection
+        overlap = []
+        for f in self.files:
+            if f in identifiers:
+                overlap.append(f)
+        return overlap
 
     def pp(self):
         print(f'\n{b}\n\n{b.content[:500]}\n')

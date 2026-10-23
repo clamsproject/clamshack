@@ -1,5 +1,5 @@
 import sys
-from shack import ClamShack, batch, annotations
+from shack import ClamShack, batch, annotations, evaluations
 
 
 def print_batches(repo, n=3):
@@ -55,13 +55,23 @@ if sys.argv[1] == 'batch':
 if sys.argv[1] == 'anno':
     # experimenting with the repository code
     shack = ClamShack(sys.argv[2], None)
-    repo = annotations.Repository(sys.argv[3])
+    repo = annotations.AnnotationRepository(sys.argv[3])
     print(f'\n{repo}')
     #print_batches(repo)
     #print_projects(repo)
     #print_entity_experiments(repo)
     print_swt_experiments(shack, repo)
 
+
+if sys.argv[1] == 'eval':
+    # experimenting with the repository code
+    shack = ClamShack(sys.argv[2], None)
+    repo = evaluations.EvaluationRepository(sys.argv[3])
+    print(f'\n{repo}')
+    #print_batches(repo)
+    #print_projects(repo)
+    #print_entity_experiments(repo)
+    #print_swt_experiments(shack, repo)
 
 
 '''

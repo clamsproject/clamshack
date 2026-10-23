@@ -94,8 +94,10 @@ class ClamShack:
     @property
     def identifiers(self):
         """Return the identifiers of all assets/sources in the shack, assumes that
-        the identifiers can be generated from the asset names."""
-        return [path.stem for path in self.assets]
+        the identifiers can be generated from the asset/source names. We are using
+        the sources so this still works even after the assets have been moved or
+        deleted."""
+        return [path.stem for path in self.sources]
     
     @property
     def app_names(self) -> list:
