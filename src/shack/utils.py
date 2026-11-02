@@ -9,9 +9,10 @@ Assorted utilities for the core code and the cli code.
 
 
 import os
-import pathlib
-
+from pathlib import Path
 from datetime import datetime
+
+from git import Repo, Blob
 from rich import box, console, prompt, print
 from rich.panel import Panel
 from rich.text import Text
@@ -25,24 +26,24 @@ from rich.markup import escape
 console = console.Console(record=True)
 
 
-def get_tree(directory, prefix=pathlib.Path('.'), full=False) -> Tree:
+def get_tree(directory, prefix=Path('.'), full=False) -> Tree:
     """Get a rich.Tree instance starting at the given directory. Adapted from
     https://github.com/Textualize/rich/blob/main/examples/tree.py."""
-    root = pathlib.Path(*directory.parts[len(prefix.parts):])
+    root = Path(*directory.parts[len(prefix.parts):])
     root = path_as_string(root)
     root = root if root else "."
     tree = Tree(
         f":open_file_folder: [link file://{directory}]{root}",
         style="bold bright_blue", guide_style="bold bright_blue")
-    walk_directory(pathlib.Path(directory), tree, full)
+    walk_directory(Path(directory), tree, full)
     return tree
 
 
-def walk_directory(directory: pathlib.Path, tree: Tree, full) -> None:
+def walk_directory(directory: Path, tree: Tree, full) -> None:
     """Recursively build a Tree with directory contents. Adapted from
     https://github.com/Textualize/rich/blob/main/examples/tree.py."""
     paths = sorted(
-        pathlib.Path(directory).iterdir(),
+        Path(directory).iterdir(),
         key=lambda path: (path.is_file(), path.name.lower()))
     for path in paths:
         # Remove hidden files
@@ -79,7 +80,7 @@ def info(text: str):
 
 
 def warning(text: str):
-    message('WARNING', 'bold', text + '\n')
+    message('WARNING', 'bold', str(text) + '\n')
     #message('WARNING', 'bold dark_orange', text)
 
 
@@ -105,7 +106,7 @@ def timestamp() -> str:
     return now.strftime('%Y-%m-%dT%H:%M:%S')
 
 
-def path_as_string(p: pathlib.Path) -> str:
+def path_as_string(p: Path) -> str:
     """Return a string for the directory path in the MMIF storage. It abbreviates
     the hash value of the parameters for clarity."""
     path_string = ''
@@ -121,12 +122,58 @@ def path_as_string(p: pathlib.Path) -> str:
     return path_string if path_string else '~'
 
 
-def path_as_tuples(p: pathlib.Path) -> list[tuple]:
+def path_as_tuples(p: Path) -> list[tuple]:
     """Return the path a a list of tuples <appname, appversion, paramhash>. The
     last element in the list is not necessarily a tuple of lenth 3, it could also
     be <appname, appversion> or <appname>."""
     parts = p.parts
     return [parts[i:i + 3] for i in range(0, len(parts), 3)]
+
+
+def read_text(blob: Blob) -> str:
+    """Read and return the text from a blob."""
+    return blob.data_stream.read().decode("utf-8")
+
+
+class Repository:
+
+    def __init__(self, directory: str, branch='main'):
+        self.path = Path(directory)
+        self.repo = Repo(directory)
+        self.branch = branch
+        self.root = self.repo.heads[self.branch].commit.tree
+        self.load()
+
+    def load(self):
+        self._load_readme()
+        self._load_branches()
+
+    def _load_readme(self):
+        self.readme = read_text(self.root / 'README.md')
+
+    def _load_branches(self):
+        """Storing both the branches and their names."""
+        self._branches = { str(branch): branch for branch in self.repo.branches }
+
+    @property
+    def branches(self) -> dict:
+      return self._branches
+
+    @property
+    def branch_names(self) -> list[str]:
+        return list(sorted([branch for branch in self._branches]))
+
+    def set_branch(self, branch: str) -> str | None:
+        """Select a new branch and update the root tree and all previously
+        loaded data. Print a warning if the branch does not exist. Returns
+        the name of the new branch if successful."""
+        if branch in self.branches:
+            self.branch = branch
+            self.root = self.repo.heads[branch].commit.tree
+            self.load()
+            return branch
+        else:
+            print(f'Warning, there is no branch named "{branch}"')
 
 
 class FileSystemNode:
@@ -143,7 +190,7 @@ class FileSystemNode:
     # repository (internal-anno-eval-dashboard).
 
 
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, path: Path):
         self.name = path.name
         self.path = path
 

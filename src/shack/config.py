@@ -2,16 +2,16 @@
 messages = { 'bye': 'Bye bye sailor'}
 
 
-# Names of tasks defined in the aapb-evaluations repository
+# Names of tasks defined in the aapb-evaluations repository.
+# NamedEntityGrounding is commented out because loading it raises errors.
 TASKS = {
-    'AutomaticSpeechRecognition', 
-    'asr_eval', 
-    'ForcedAlignment', 
-    'KeyedInformationExtraction', 
-    'NamedEntityGrounding', 
-    'NamedEntityRecognition', 
-    'TextRecognition', 
-    'TimeFrameLabeling', 
+    'AutomaticSpeechRecognition',
+    'ForcedAlignment',
+    'KeyedInformationExtraction',
+    #'NamedEntityGrounding',
+    'NamedEntityRecognition',
+    'TextRecognition',
+    'TimeFrameLabeling',
     'TimePointLabeling'
 }
 
@@ -129,12 +129,9 @@ SHELL_COMMANDS = {
         ' for directories with files creating where the app was given certain'
         ' parameters.'),
 
-    'annotations': (
-        'annotations'
-        '\n annotations set DIRECTORY'
-        '\n annotations select PROJECT_NAME',
-        'Show all available annotation projects, load the annotation repository'
-        ' in DIRECTORY, or select a project for further exploration.'),
+    'eval': (
+        'eval',
+        'Start the evaluation sub shell.')
 
 }
 
@@ -148,12 +145,19 @@ ESHELL_COMMANDS = {
         'Load the annotation or evaluation repository from disk.'),
 
     'show': (
-        'show\n show error|errors\n show batch (INT|STR)?\n show task (INT|STR)',
+        'show\n show error|errors\n show project (INT|STR)?\n show batch (INT|STR)?\n show task (INT|STR)?',
         'Show current Evaluation settings or show the last or all errors. '
+        'With the project option, show the selected project with its comment or do that '
+        'for the project identified by name or by the index in the projects list. '
         'With the batch option, show the selected batch with its comment or do that '
-        'for the batch identified by name or by the index in the batches list. With '
-        'the task option, show the selected task with its comment or do that for the '
-        'task identified by name or by the index in the tasks list.'),
+        'for the batch identified by name or by the index in the batches list. '
+        'With the task option, show the selected task with its comment or do that '
+        'for the task identified by name or by the index in the tasks list.'),
+
+    'branch': (
+        'branch REPO BRANCH',
+        'Select the branch on the repository, the repository should be either '
+        '"annotations" or "evaluations") and the branch should exist.'),
 
     'projects': (
         'projects'
@@ -172,6 +176,10 @@ ESHELL_COMMANDS = {
         '\n tasks INT|STR',
         'List all tasks in the evaluation repository or select a task using'
         ' the task name or its index in the task dictionary.'),
+
+    'reset': (
+        'reset',
+        'Reset the selected task, project and batch on the view.'),
 
     'quit': (
         'quit',

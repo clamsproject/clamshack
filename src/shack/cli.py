@@ -12,14 +12,15 @@ from rich.table import Table, Column
 from rich.text import Text
 from rich.markdown import Markdown
 from rich.syntax import Syntax
+from rich.style import Style
 
 from mmif.utils.cli import describe
 from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
 from mmif_storage.utils import load_json
 
 from shack import ClamShack, ShackError
-from shack.annotations import AnnotationRepository, BatchFile
-from shack.evaluations import EvaluationRepository
+from shack.annotations import AnnotationRepository, Project, BatchFile
+from shack.evaluations import EvaluationRepository, Task
 from shack.config import messages, COMMANDS, SHELL_COMMANDS, ESHELL_COMMANDS
 from shack.utils import console, timestamp, path_as_string
 from shack.utils import info, warning, error, dribble, get_tree
@@ -129,13 +130,18 @@ class AbstractShell(Cmd):
             warning(
                 'An unexpected error occured, type "show error" to see the last'
                 ' error that occurred')
-            current_error = {'command': line, 'stacktrace': []}
-            self.log.append(f'ERROR: {line}')
+            current_error = {
+                'command': line,
+                'timestamp': timestamp(),
+                'stacktrace': []}
             for l in traceback.format_exception(e):
                 current_error['stacktrace'].append(l)
+            self.log.append(f'ERROR: {line}')
             self.errors.append(current_error)
             with open(self.shack.error_file, 'a') as fh:
-                fh.write(f'\n>>> ERROR: {line}\n\n')
+                fh.write(f'\n>>> ERROR')
+                fh.write(f'\n>>> shell command  =  {line}')
+                fh.write(f'\n>>> time stamp     =  {timestamp()}\n\n')
                 for l in traceback.format_exception(e):
                     fh.write(l)
 
@@ -179,7 +185,10 @@ class AbstractShell(Cmd):
 
     def show_error(self):
         if self.errors:
-            console.print(f'\n ERROR ON COMMAND: {self.errors[-1]["command"]}\n')
+            print(
+                f'\n >>> ERROR'
+                f'\n >>> shell command  =  {self.errors[-1]["command"]}'
+                f'\n >>> time stamp     =  {self.errors[-1]["timestamp"]}\n')
             for line in self.errors[-1]['stacktrace']:
                 console.print(f' {line}', end='')
 
@@ -548,8 +557,9 @@ class Shell(AbstractShell):
         self.cmdqueue.append('source example-script.txt')
 
     def do_t(self, arg):
-        self.cmdqueue.append('search app spac')
+        self.cmdqueue.append('search app swt')
         self.cmdqueue.append('goto 0')
+        self.cmdqueue.append('eval')
 
     def do_test(self, arg):
         if arg == 'search':
@@ -600,9 +610,6 @@ class Shell(AbstractShell):
     def do_w(self, arg):
         self.cmdqueue.append('source s2.txt')
 
-    def do_t(self, arg):
-        self.do_eval('')
-
 
 class EvaluationShell(AbstractShell):
 
@@ -610,16 +617,10 @@ class EvaluationShell(AbstractShell):
     down stream evaluations. Returns upon exit an AnnotationView with annotation
     state data."""
 
-    # TODO: load the state from the shack or Shell upon initialization
-    # TODO: see if some code in here belongs elsewhere
-    # TODO: add check on whether a repository was loaded
-    # TODO: viewing batch comments, expand comment property
-    # TODO: remove identifiers in do_batches()
-    # TODO: task readme is not useful, add mini description to aapb-evaluations
-
     intro = (
-        '\nThis is the evaluation shell. With it you can select annotation sets,'
-        ' and batches, select evaluation tasks and run and store evaluations.\n'
+        '\nThis is the evaluation shell. With it you can select evaluation tasks, '
+        'drill down into annotation projects and annotations batches, and then '
+        'run and store evaluations.\n'
         '\nType help or ? for a list of commands.\n')
 
     # See https://www.unicode.org/emoji/charts/full-emoji-list.html for other 
@@ -634,12 +635,12 @@ class EvaluationShell(AbstractShell):
         self.annotations = None
         self.evaluations = None
         # View on annotations and evaluations, will be returned on exit
-        self.view = EvaluationView()
+        self.view = EvaluationView(self)
 
     def __str__(self):
         name1 = 'None' if self.annotations is None else self.annotations.path
         name2 = 'None' if self.evaluations is None else self.evaluations.path
-        return f'<EvaluationShell on "{name1} and {name2}">'
+        return f'<EvaluationShell on "{name1}" and "{name2}">'
 
     @property
     def annotations_path(self): 
@@ -657,51 +658,154 @@ class EvaluationShell(AbstractShell):
         super().cmdloop(intro)
         return self.view
 
+    def load_repositories(self):
+        """Attempt to load annotation and evaluation repositories, checking for
+        common locations."""
+        # TODO: probably needs work once we run the shack from a command script
+        for location in ('../aapb-annotations', '../aapb/aapb-annotations'):
+            if Path(location).is_dir():
+                self.load_annotations(location)
+        for location in ('../aapb-evaluations', '../aapb/aapb-evaluations'):
+            if Path(location).is_dir():
+                self.load_evaluations(location)
+
+    def load_annotations(self, location: str):
+        """Load the annotations and give the view the full dictionaries of projects
+        and batches.""" 
+        self.annotations = AnnotationRepository(location)
+        self.view.projects = self.annotations.get_projects()
+        self.view.batches = self.annotations.get_batches()
+        print(f' Loaded annotation repository in "{location}"')
+
+    def load_evaluations(self, location: str):
+        """Load the evaluations and give the view the full task dictionary."""
+        self.evaluations = EvaluationRepository(location)
+        self.view.tasks = self.evaluations.get_tasks()
+        print(f' Loaded evaluation repository in "{location}"')
+
+    def show_info(self):
+        console.print(Panel("Evaluation shell settings"))
+        console.print(f' shack location    - "{self.shack.location}"')
+        console.print(f' shack path        - "{self.shack.path}"')
+        console.print(f' annotations       - {self.annotations}')
+        console.print(f' evaluations       - {self.evaluations}')
+        console.print(f' selected task     - {self.view.task}')
+        console.print(f' selected project  - {self.view.project}')
+        console.print(f' selected batch    - {self.view.batch}')
+
+    def show_project(self, args):
+        if len(args) == 1:
+            project = self.view.project
+            header = "Readme file of current project"
+        else:
+            project_name = get_name(self.view.projects, args[1])
+            project = self.annotations.get_project(project_name)
+        if project is None:
+            # see comment in show_task()
+            warning(f'Project "{project_name}" does not exist')
+        else:
+            console.print(Panel(f'Project {project.name}'))
+            #console.print(f' {self.view.project}')
+            t = Table(show_header=False)
+            t.add_row('golds', str(len(project.golds)))
+            t.add_row('batches', str(len(project.batches)))
+            specs = project.goldspec
+            if specs is not None:
+                t.add_row('format', specs['format'])
+                t.add_row('fields', ' '.join(specs['fields']))
+                console.print(t)
+            if project.golds:
+                selected_gold = project.golds[0]
+                console.print(f'\n Example gold file: {selected_gold}')
+                console.print(
+                    Panel(selected_gold.get_content_sample(),
+                          style="navy_blue", border_style="bold grey66"))
+
+    def show_batch(self, args):
+        if len(args) == 1:
+            batch = self.view.batch
+            header = 'Current batch'
+        else:
+            batch_name = get_name(self.view.batches, args[1])
+            batch = self.annotations.get_batch(batch_name)
+            header = f'Batch {batch_name}'
+        console.print(Panel(header))
+        console.print(f' {batch}')
+        # see comment in show_task()
+        if batch is not None:
+            console.print(Panel(batch.comment))
+
+    def show_task(self, args):
+        if len(args) == 1:
+            task = self.view.task
+            if task is None:
+                warning(f'No task selected')
+                return
+            header = "Readme file of current task"
+        else:
+            task_name = get_name(self.view.tasks, args[1])
+            task = self.evaluations.get_task(task_name)
+        if task is None:
+            # TODO: this, and its siblings should allow for the case where
+            # no task was selected (done for this one)
+            warning(f'Task "{task_name}" does not exist')
+        else:
+            console.print(Panel(f'{task.name}'))
+            console.print(' Evaluator class documentation', style='bold')
+            # Markdown does not look very well in the shack so just dumping the
+            # docstring in a panel
+            console.print(Panel(task.doc))
+            specs = task.goldspec
+            table = Table(show_header=False)
+            table.add_row('projects', ' '.join(specs['projects']))
+            table.add_row('format', specs['format'])
+            table.add_row('fields', ' '.join(specs['fields']))
+            console.print(' Gold data specifications', style='bold')
+            console.print(table)
+
+    def select_project(self, identifier: str) -> Project:
+        """Select a project, store it in the view and return it. The identifier
+        can be a name like 'scene-recognition' or a key in the view's projects
+        dictionary."""
+        project_name = get_name(self.view.projects, identifier)
+        project = self.annotations.get_project(project_name)
+        self.view.project = project
+        self.view.drops = list(sorted(project.drops))
+        return project
+
+    def select_batch(self, identifier: str) -> BatchFile:
+        """Select a batch, store it in the view and return it. The identifier can be
+        a name like 'scene-aapb-collaboration-27-a' or a key in the view's batches
+        dictionary."""
+        batch_name = get_name(self.view.batches, identifier)
+        batch = self.annotations.get_batch(batch_name)
+        self.view.batch = batch
+        return batch
+
     def do_quit(self, arg):
         return True
 
     def do_show(self, arg):
         args = arg.split()
         if not arg:
-            console.print(Panel("Evaluation shell settings"))
-            console.print(' shack location        - ', self.shack.location)
-            console.print(' annotations location  - ', self.annotations_path)
-            console.print(' evaluations location  - ', self.evaluations_path)
-            console.print(' selected project      - ', self.view.project)
-            console.print(' selected batch        - ', self.view.batch)
-            console.print(' selected task         - ', self.view.task)
+            self.show_info()
         elif arg == 'error':
             self.show_error()
         elif arg == 'errors':
             self.show_errors()
+        elif args[0] == 'project':
+            self.show_project(args)
         elif args[0] == 'batch':
-            if len(args) == 1:
-                batch = self.view.batch
-                header = 'Current batch'
-            else:
-                batch_name = self.get_batch_name(args[1])
-                batch = self.annotations.get_batch(batch_name)
-                header = f'Batch {batch_name}'
-            show_batch(header, batch)
+            self.show_batch(args)
         elif args[0] == 'task':
-            if len(args) == 1:
-                task = self.view.task
-                header = "Readme file of current task"
-            else:
-                task_name = self.get_task_name(arg.split()[1])
-                task = self.evaluations.get_task(task_name)
-            if task is None:
-                warning(f'Task "{task_name}" does not exist')
-            else:
-                console.print(Panel(f'{task} README.md'))
-                console.print(Markdown(task.readme))
+            self.show_task(args)
         # this option is not documented, for development only for now
         elif args[0] == 'task-script':
             if len(args) == 1:
                 task = self.view.task
                 header = "Readme file of current task"
             else:
-                task_name = self.get_task_name(arg.split()[1])
+                task_name = get_name(self.view.tasks, args[1])
                 task = self.evaluations.get_task(task_name)
             if task is None:
                 warning(f'Task "{task_name}" does not exist')
@@ -716,66 +820,100 @@ class EvaluationShell(AbstractShell):
         """Load the annnotation or evaluation repository from the given directory.
         Assumes that the name of the location includes 'annotation' or 'evaluation'
         and uses that to determine what kind of repository is loaded."""
-        if 'annotations' in arg:
-            self.annotations = AnnotationRepository(arg)
-            projects = list(enumerate(self.annotations.project_names))
-            projects = { n: p for n, p in projects }
-            self.view.projects = projects
-            self.view.batches = \
-                {n: b for n, b in enumerate(self.annotations.batch_names)}
-            print(f' Loaded annotation repository in "{arg}"')
+        if not arg:
+            self.load_repositories()
+        elif 'annotations' in arg:
+            self.load_annotations(arg)
         elif 'evaluations' in arg:
-            self.evaluations = EvaluationRepository(arg)
-            tasks = list(enumerate(self.evaluations.task_names))
-            tasks = { n: p for n, p in tasks }
-            self.view.tasks = tasks
-            print(f' Loaded evaluation repository in "{arg}"')
+            self.load_evaluations(arg)
+
+    def do_branch(self, arg):
+        args = arg.split()
+        if len(args) == 2 and args[0] in ('annotations', 'evaluations'):
+            repo = getattr(self, args[0])
+            if repo is not None:
+                result = repo.set_branch(args[1])
+                if result:
+                    print(f'Set branch in "{repo.path}" to {args[1]}"')
+                    # When we have changed the branch we want to update the tasks,
+                    # projects and batches on the view
+                    if args[0] == 'annotations':
+                        self.view.projects = self.annotations.get_projects()
+                        self.view.batches = self.annotations.get_batches()
+                    elif args[0] == 'evaluations':
+                        self.view.projects = self.evaluations.get_tasks()
+            else:
+                print('Cannot set branch because repository is not loaded')
+        else:
+            warning('Unexpected argument to "branch"')
+            self.do_help('branch')
 
     def do_projects(self, arg):
         if arg:
-            project_name = arg
-            projects = self.view.projects
-            if arg.isnumeric() and int(arg) in projects:
-                project_name = projects[int(arg)]
-            project = self.annotations.get_project(project_name)
-            self.view.project = project
-            self.view.drops = list(sorted(project.drops))
-            print(f' Selected project "{project_name}"')
+            # one argument means we are selecting a project
+            project = self.select_project(arg)
+            print(f' Selected project "{project.name}"')
         else:
-            print_dictionary(self.view.projects, 'Available annotation projects')
+            # no argument means we want a listing
+            projects = self.view.projects
+            if self.view.task is not None:
+                goldspec = self.view.task.goldspec
+                # only keep the relevant projects for the task
+                project_specs = Project.gold_specifications
+                matching_projects = Project.matching_projects(goldspec)
+                projects = { 
+                    identifier: name for identifier, name in projects.items()
+                    if name in matching_projects }
+            table = projects_table()
+            for project_id in projects:
+                project_name = self.view.projects[project_id]
+                project = self.annotations.get_project(project_name)
+                gold_count = str(len(project._golds))
+                batch_count = str(len(project._batches))
+                specs = project.goldspec
+                gold_format = '' if specs is None else specs.get('format', '')
+                gold_fields = 0 if specs is None else len(specs.get('fields', []))
+                table.add_row(
+                    str(project_id), project_name, gold_format, str(gold_fields),
+                    gold_count, batch_count)
+            console.print(table)
 
     def do_batches(self, arg):
         if arg:
-            batch_name = self.get_batch_name(arg)
-            batch = self.annotations.get_batch(batch_name)
-            self.view.batch = batch
-            print(f' Selected batch "{batch_name}"')
+            # batch_name = get_name(self.view.batches, arg)
+            # #warning('This functionality is disabled and will be moved elsewhere')
+            # batch = self.annotations.get_batch(batch_name)
+            # self.view.batch = batch
+            batch = self.select_batch(arg)
+            print(f' Selected batch "{batch.name}"')
         else:
-            #print_dictionary(self.view.batches, 'Available annotation batches')
             identifiers = self.shack.identifiers
-            table = Table(
-                Column(header='id', justify='right'),
-                'batch',
-                Column(header='size', justify='right'),
-                Column(header='overlap', justify='right'),
-                show_header=False
-                )
-            # Is this reliable with the numbers in sync with the batches in self.view?
-            for n, batch in enumerate(sorted(self.annotations.batches)):
-                # TODO: these should be removed
-                #identifiers.append('cpb-aacip-0009a7e5474')
-                #identifiers.append('cpb-aacip-507-930ns0mg7g')
-                overlap = str(len(batch.overlap(identifiers)))
-                table.add_row(str(n), batch.name, str(len(batch.files)), overlap)
-            console.print(Panel('Available annotation batches'))
+            table = batches_table()
+            if self.view.project is None:
+                # show all batches if no project was selected
+                for n, batch in enumerate(sorted(self.annotations.batches)):
+                    # TODO: these should be removed
+                    identifiers.append('cpb-aacip-0009a7e5474')
+                    identifiers.append('cpb-aacip-507-930ns0mg7g')
+                    overlap = str(len(batch.overlap(identifiers)))
+                    table.add_row(str(n), batch.stem, str(len(batch.files)), overlap)
+                text = ('Full list of annotation batches, with number of files per '
+                        'batch. A file can be annotated in multiple annotation tasks '
+                        'but not every file in a batch has to be annotated. The last '
+                        'column gives the overlap of the batch with the Shack files.')
+            else:
+                # show the batches for the selected project
+                for n, (batch, ids) in enumerate(self.view.project._batches.items()):
+                    table.add_row(str(n), batch, str(len(ids)), '?')
+                text = ('List of annotation batches for this project, with '
+                        'number of files per annotated batch.')
+                # TODO: calculate the overlap
+            console.print(Panel('Annotation batches'))
+            lines =textwrap.wrap(
+                text, width=80, initial_indent=' ', subsequent_indent=' ')
+            for line in lines:
+                console.print(line)
             console.print(table)
-
-    def do_batch(self, arg):
-        batch = self.view.batch
-        console.print(Panel('Current batch'))
-        console.print(f' {batch}')
-        if batch is not None:
-            console.print(Panel(batch.comment))
 
     def do_tasks(self, arg):
         if arg:
@@ -787,49 +925,109 @@ class EvaluationShell(AbstractShell):
             self.view.task = task
             print(f' Selected task "{task_name}"')
         else:
-            print_dictionary(self.view.tasks, 'Available annotation tasks')
+            # TODO: maybe print this as a table, like the batches (although in this
+            # case ther eis no extra information to display).
+            print_dictionary(self.view.tasks, 'Annotation tasks')
+
+    def do_reset(self, arg):
+        self.view.reset()
+
+    def do_run(self, arg):
+        print('running evaluation')
+        print(self.view.task)
+        print(self.view.project)
+        print(self.view.batch)
+        # 1. getting the golds
+        # 2. getting the absolute path for the golds and system files
+        # 3
+
+
+    ## Undocumented actions for debugging and development, do not rely on the 
+    ## continued presence of any of these.
 
     def do_t(self, arg):
         self.do_load('../aapb/aapb-annotations')
         self.do_load('../aapb/aapb-evaluations')
-        self.do_projects('')
+        #self.do_projects('')
         self.do_projects('scene-recognition')
-        self.do_batches('')
-        self.do_batches('2')
-        self.do_tasks('')
+        #self.do_batches('')
+        #self.do_batches('2')
+        #self.do_tasks('')
         self.do_tasks('TimePointLabeling')
         self.do_show('')
-
-    def get_batch_name(self, arg):
-        batch_name = arg
-        batches = self.view.batches
-        if arg.isnumeric() and int(arg) in batches:
-            batch_name = batches[int(arg)]
-        return batch_name
-
-    def get_task_name(self, arg):
-        task_name = arg
-        tasks = self.view.tasks
-        if arg.isnumeric() and int(arg) in tasks:
-            task_name = tasks[int(arg)]
-        return task_name
+        #self.do_show('task')
 
 
 class EvaluationView():
 
     """This is the current view on the annotation and evaluation repositories. It
-    contains various annotation/evaluation data relevant to the evaluation shell. 
-    This includes the list of projects, the currently selected project, the batches
-    for that project and the evaluation task selected. More information can be added
-    as needed."""
+    data relevant to the evaluation shell. In particular, this class stores the
+    the selected evaluation task, annotaton project and batch.
 
-    def __init__(self):
-        self.projects = {}
-        self.project = None
-        self.batches = {}
-        self.batch = None
+    task      --  an instance of Task
+    project   --  an instance of Project
+    batch     --  an instance of BatchFile
+
+    tasks
+        a dictionary mapping indices to task names, this will only when new evaluation
+        tasks are added to the code base
+        entire session
+    projects
+        a dictionary mapping indices to project names, will change depending on what
+        task is selected
+    batches
+        a dictionary mapping indices to batch names, will change depending on what
+        task and project are selected
+
+    """
+
+    def __init__(self, shell: EvaluationShell):
+        self.shell = shell
+        self._path = shell.shack.path
+        self._task = None
+        self._project = None
+        self._batch = None
         self.tasks = {}
-        self.task = None
+        self.projects = {}
+        self.batches = {}
+
+    @property
+    def task(self):
+        return self._task
+
+    @task.setter
+    def task(self, value: Task):
+        if not isinstance(value, Task):
+            raise TypeError(f'{value} is not of type evaluations.Task')
+        # Project and batch selection is reset when changing the task, but only 
+        # do that when we are really changing the task.
+        # TODO: should this also update the projects and batches dictionaries?
+        if value is not self.task:
+            self._task = value
+            self._project = None
+            self._batch = None
+
+    @property
+    def project(self):
+        return self._project
+
+    @project.setter
+    def project(self, value: Project):
+        if not isinstance(value, Project):
+            raise TypeError(f'{value} is not of type annotations.Project')
+        # Batch selection is reset when changing the project, but only do that
+        # when we are really changing the project.
+        if value is not self.project:
+            self._project = value
+            self._batch = None
+
+    @property
+    def batch(self):
+        return self._batch
+
+    @batch.setter
+    def batch(self, value):
+        self._batch = value
 
     @property
     def batch_name(self):
@@ -849,6 +1047,44 @@ class EvaluationView():
     def as_json(self):
         return {}
 
+    def set_task(self, task):
+        pass
+
+    def reset(self):
+        """Reset the selected project, batch and task."""
+        # using the hidden variables to bypass the type checking of the setters
+        self._task = None
+        self._project = None
+        self._batch = None
+
+
+def get_name(view_dictionary, name: str):
+    if name.isnumeric() and int(name) in view_dictionary:
+        name = view_dictionary[int(name)]
+    return name
+
+
+def projects_table() -> Table:
+    table = Table(
+        Column(header='id', justify='right'),
+        'project',
+        'format',
+        Column(header='fields', justify='right'),
+        Column(header='golds', justify='right'),
+        Column(header='batches', justify='right'),
+        show_header=True)
+    return table
+
+
+def batches_table() -> Table:
+    table = Table(
+        Column(header='id', justify='right'),
+        'batch',
+        Column(header='size', justify='right'),
+        Column(header='overlap', justify='right'),
+        show_header=False)
+    return table
+
 
 def print_dictionary(d: dict, header: str):
     """Print a dictionary, assumes integer keys and string values."""
@@ -856,13 +1092,6 @@ def print_dictionary(d: dict, header: str):
     for n, name in sorted(d.items()):
         print(f' {n:2d}: {name}')
     print()
-
-
-def show_batch(header: str, batch: BatchFile):
-    console.print(Panel(header))
-    console.print(f' {batch}')
-    if batch is not None:
-        console.print(Panel(batch.comment))
 
 
 def parse_arguments():

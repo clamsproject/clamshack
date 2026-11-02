@@ -21,7 +21,8 @@ from the trees and blobs, not from the local paths.
 # - Not all batch comments follow the convention that comments are separated by
 #   lines with dashes, maybe update the code so that file-initial sequences of
 #   python comments are recognized as well.
-
+# - Should maybe revisit the name property of FileSystemNode and have it not
+#   include the extension. For the name with extension we can ping the path.
 
 # To make the type hints work, not needed starting with Python 3.14.
 from __future__ import annotations
@@ -41,7 +42,7 @@ from shack import utils
 Comparison = namedtuple('Comparison', ['in_both', 'in_first', 'in_second'])
 
 
-class AnnotationRepository:
+class AnnotationRepository(utils.Repository):
 
     """Class to give access to data in the annotation repository. All data are
     taken from the repository itself and not the checked out working directory.
@@ -54,8 +55,6 @@ class AnnotationRepository:
     root    --  the root tree for the selected branch
     readme  --  contents of the readme file
 
-    Description of repository data:
-
     _branches
         a dictionary of branches, keys are branch names (strings) and values are
         instances of git.Head
@@ -65,28 +64,19 @@ class AnnotationRepository:
     _projects
         a dictionary of projects, keys are project names (strings) and values are
         instances of Project
+    _identifier2batch
+        an index mapping identifiers to batch names
 
     """
 
     def __init__(self, directory: str, branch='main'):
-        self.path = Path(directory)
-        self.repo = Repo(directory)
-        self.branch = branch
-        self.root = self.repo.heads[self.branch].commit.tree
+        super().__init__(directory, branch)
         self.load()
 
     def load(self):
-        self._load_readme()
-        self._load_branches()
+        super().load()
         self._load_batches()
         self._load_projects()
-
-    def _load_readme(self):
-        self.readme = read_text(self.root / 'README.md')
-
-    def _load_branches(self):
-        """Storing both the branches and their names."""
-        self._branches = { str(branch): branch for branch in self.repo.branches }
 
     def _load_batches(self):
         self._batches = {}
@@ -95,6 +85,12 @@ class AnnotationRepository:
             if blob.name.endswith('.txt'):
                 batches_path = self.path / 'batches' / blob.name
                 self._batches[batches_path.stem] = BatchFile(batches_path, blob)
+        # Create an index of identifiers to batch names.
+        self._identifier2batch = {}
+        for batch in self.batches:
+            batch_name = Path(batch.name).stem
+            for identifier in batch.files:
+                self._identifier2batch.setdefault(identifier, set()).add(batch_name)
 
     def _load_projects(self):
         self._projects = {}
@@ -106,23 +102,15 @@ class AnnotationRepository:
     def __str__(self):
         return (
             f'<{self.__class__.__name__} "{str(self.path)}" '
-            f'branch={self.branch} projects={len(self._projects)}>')
+            f'branch="{self.branch}" projects={len(self._projects)}>')
 
-    @property
-    def branches(self) -> dict:
-      return self._branches
-
-    @property
-    def branch_names(self) -> list[str]:
-        return list(sorted([branch for branch in self._branches]))
-   
     @property
     def batches(self) -> list[Batch]:
         return sorted(self._batches.values())
 
     @property
     def batch_names(self) -> list[str]:
-        return list(sorted(self._batches.keys()))
+        return sorted(self._batches.keys())
 
     @property
     def projects(self) -> list[Project]:
@@ -140,21 +128,14 @@ class AnnotationRepository:
         """Retrieve a project from the projects dictionary."""
         return self._projects.get(name)
 
-    def set_branch(self, branch_name: str):
-        """Select a new branch and update the root tree and all previously
-        loaded data. Print a warning if the branch does not exist."""
-        if branch_name in self.branch_names:
-            self.branch = branch_name
-            self.root = self.repo.heads[branch_name].commit.tree
-            self.load()
-        else:
-            print(f'Warning, there is no branch named "{branch_name}"')
+    def get_batches_for_identifier(self, identifier: str) -> list:
+        return self._identifier2batch.get(identifier,[])
 
-    def checkout(self, branch: str):
-        self.branch = branch
-        self.branches[branch].checkout()
-        self.root = self.repo.heads[branch].commit.tree
-        self.load()
+    def get_projects(self) -> dict:
+        return { n: p for n, p in enumerate(self.project_names) }
+
+    def get_batches(self):
+        return { n: b for n, b in enumerate(self.batch_names) }
 
     def pp(self):
         print(f'\n{self}')
@@ -172,12 +153,12 @@ class Project(utils.FileSystemNode):
 
     """An annotation project within the Repository
 
-    name        --  inherited from FileSystemNode
-    path        --  inherited from FileSystemNode
+    name        --  name of the project, inherited from FileSystemNode
+    path        --  instance of Path, inherited from FileSystemNode
     repository  --  the Repository that the project is in
     tree        --  the Tree in the git.Repo where the project lives
-    readme
-    process
+    readme      --  contents of the readme.md file
+    process     --  contents of the process.py script
 
     _golds 
         a dictionary of gold files, keys are gold file names (strings) and values
@@ -185,32 +166,110 @@ class Project(utils.FileSystemNode):
     _drops
         a dictionary of data drops, keys are data drop names (strings) and values
         are instances of DataDrop
+    _batches
+        a dictionary of batches for the project, keys are batch names (strings) and
+        values are sets of identifiers
+
+    The gold_specifications class variable stores descriptions of annotation
+    data, specifying the format and the available fields. This is intended for
+    use by evaluation tasks, which store information on what kind of annotations
+    are needed. At some point these specifications should be moved to the 
+    aapb-annotations repository.
 
     """
+
+
+    gold_specifications = {
+
+        'january-slates': {
+            'format': 'csv',
+            'fields': ['collection', 'start', 'end', 'scene-label',
+                       'scene-subtype-label', 'format-summary', 'moving-elements']},
+        
+        'newshour-chyron': {
+            'format': 'csv',
+            'fields': ['start', 'end', 'scene-label', 'text-transcript']},
+        
+        'newshour-namedentity': {
+            'format': 'ann',
+            # TODO: not quite sure what names to use here
+            'fields': ['id', 'label', 'start', 'end', 'text']},
+        
+        'newshour-namedentity-wikipedialink': {
+            'format': 'tsv',
+            'fields': ['src_ann', 'src_ann_id', 'type', 'start', 'end', 'text',
+                       'wiki_url', 'qid']},
+        
+        'newshour-transcript-sync': {
+            'format': 'tsv',
+            'fields': ['start', 'end', 'alignment-start', 'alignment-end']},
+        
+        'role-filler-binding': {
+            'format': 'csv',
+            'fields': ['at', 'scene-label', 'skipped', 'role-fillers']},
+        
+        # no gold data available
+        'role-filler-binding-seqtag': {
+            'format': '',
+            'fields': []},
+        
+        'scene-recognition': {
+            'format': 'csv',
+            'fields': ['at', 'scene-label', 'scene-subtype-label', 'transitional']},
+        
+        'spoken-lid': {
+            'format': 'csv',
+            'fields': ['start', 'end', 'scene-label']},
+
+        'understanding-chyrons': {
+            'format': 'json',
+            'fields': ['at', 'scene-label', 'scene-subtype-label','transitional',
+                       'text-transcript', 'keyed-information']},
+
+        'understanding-slates': {
+            'format': 'json',
+            'fields': ['at', 'scene-label', 'scene-subtype-label','transitional',
+                       'text-transcript', 'keyed-information']},
+    }
+
+    @classmethod
+    def matching_projects(cls, specs: dict) -> list[str]:
+        # TODO: should allow patterns in the required fields
+        # TODO: should allow multiple formats
+        if specs is None:
+            return []
+        project_names = []
+        for project_name, project_specs in cls.gold_specifications.items():
+            if project_specs['format'] == specs['format']:
+                required_fields = set(specs['fields'])
+                project_fields = set(project_specs['fields'])
+                intersection = set(project_fields).intersection(set(required_fields))
+                if len(intersection) == len(required_fields):
+                    project_names.append(project_name)
+        return project_names
 
     def __init__ (self, repo: Repository, path: Path, tree: Tree):
         super().__init__(path)
         self.repository = repo
-        #self.path = path
         self.tree = tree
-        #self.name = tree.name
         self.load()
 
     def load(self):
         """Loads the README.md and process.py files as well as the list of gold
-        files and the files in each data drop. Does not load the oother top-level
+        files and the files in each data drop. Does not load the other top-level
         files in the project."""
         self._load_readme()
         self._load_process()
         self._load_golds()
         self._load_drops()
+        self._load_batches()
 
     def _load_readme(self):
-        self.readme = read_text(self.tree / 'README.md')
+        self.readme = utils.read_text(self.tree / 'README.md')
 
     def _load_process(self):
         try:
-            self.process = read_text(self.tree / 'process.py')
+            self.process = utils.read_text(self.tree / 'process.py')
         except KeyError:
             self.process = None
 
@@ -229,6 +288,24 @@ class Project(utils.FileSystemNode):
             if tree.name != 'golds':
                 path = self.repository.path / tree.path
                 self._drops[tree.name] = DataDrop(self.repository, self, path, tree)
+
+    def _load_batches(self):
+        self._batches = {}
+        # First loop through the data drops to get the batch files
+        for drop in self.drops:
+            # Chop off the date from a drop name like "250416-hi-chy-practice"
+            batch_name = drop.name[7:]
+            self._batches[batch_name] = set()
+        # Then loop through the golds and figure out what batch to put them in.
+        for identifier in self._golds:
+            for batch_name in self.repository.get_batches_for_identifier(identifier):
+                if batch_name in self._batches:
+                    self._batches[batch_name].add(identifier)
+        # Printing identifiers that occur in more than one batch.
+        # (this should be moved to some validation code on aapb-annotations)
+        # for identifier, batches in self._identifier2batch.items():
+        #     if len(batches) > 1:
+        #         print(f'{identifier:24s}  -  {" & ".join(batches)}')
 
     def __str__(self):
         return (
@@ -258,6 +335,18 @@ class Project(utils.FileSystemNode):
     def drop_names(self):
         return list(sorted(self._drops))
 
+    @property
+    def batches(self):
+        return list(sorted(self._batches.values()))
+
+    @property
+    def batch_names(self):
+        return list(sorted(self._batches))
+
+    @property
+    def goldspec(self):
+        return self.__class__.gold_specifications.get(self.name)
+
     def get_gold(self, gold_name: str):
         return self._golds.get(drop_name)
 
@@ -266,6 +355,10 @@ class Project(utils.FileSystemNode):
 
     def get_gold_file(self, filename: str):
         return self._golds.get(filename)
+
+    def print_batches(self):
+        for name, batch in self._batches.items():
+            print(f'>>> {name:26s}  {len(batch):5d}')
 
     '''
     Some methods that were defined in the old Task class and that may be relevant
@@ -353,7 +446,7 @@ class DataDrop(utils.FileSystemNode):
         return self._files.get(filename)
 
     def file_content(self, filename: str):
-        return read_text(self.get_file(filename))
+        return utils.read_text(self.get_file(filename))
 
 
 class RepoFile(utils.FileSystemNode):
@@ -377,20 +470,22 @@ class RepoFile(utils.FileSystemNode):
     @property
     def content(self):
         if self._content is None:
-            self._content = read_text(self.blob)
+            self._content = utils.read_text(self.blob)
         return self._content
 
 
 class BatchFile(RepoFile):
 
-    """Stores the content of a batch file.
+    """Stores the content of a batch file, which is the file that lists all
+    identifiers in a batch.
 
     name     --  inherited from FileSystemNode 
+    stem     --  the name of the batch file (without the extension)
     path     --  inherited from FileSystemNode
-    blob     --  inherited from RepoFile
-    content  --  inherited from RepoFile
+    blob     --  instance of git.Blob, inherited from RepoFile
+    content  --  batch file content, inherited from RepoFile
     files    --  a list of files included in the batch file
-    comment  --  the comment of the batch file
+    comment  --  the comment in the batch file
     
     """
 
@@ -405,6 +500,13 @@ class BatchFile(RepoFile):
 
     def __len__(self):
         return len(self.files)
+
+    @property
+    def stem(self):
+        # The name of the batch. This is not available in the name instance
+        # variable because the name is inherited from the system node which
+        # includes the extension
+        return self.path.stem
 
     @property
     def comment(self):
@@ -447,10 +549,10 @@ class GoldFile(utils.FileSystemNode):
 
     """Stores the content of a gold file.
 
-    name     --  inherited from FileSystemNode 
-    path     --  inherited from FileSystemNode
-    blob     --  inherited from RepoFile
-    content  --  inherited from RepoFile
+    name     --  name of the file, inherited from FileSystemNode
+    path     --  instance of Path, inherited from FileSystemNode
+    blob     --  instance of git.Blob, inherited from RepoFile
+    content  --  content string, inherited from RepoFile
     
     """
 
@@ -461,21 +563,29 @@ class GoldFile(utils.FileSystemNode):
         self._content = None
     
     def __str__(self):
-        return f'<GoldFile {self.name}>'
+        return f'<GoldFile "{self.name}" entries={len(self)}>'
+
+    def __len__(self):
+        return len(self.content.splitlines()) -1
 
     @property
     def content(self):
         if self._content is None:
-            self._content = read_text(self.blob)
+            self._content = utils.read_text(self.blob)
         return self._content
+
+    def get_content_sample(self, n=15) -> str:
+        """Return the first n lines of the content."""
+        content_lines = self.content.splitlines()
+        #selected_lines = [l.replace('\t', '    ') for l in content_lines[:n]]
+        selected_lines = content_lines[:n]
+        if len(content_lines) > n:
+            selected_lines.append('...')
+        return '\n'.join(selected_lines)
+        return '\n' + '\n'.join(selected_lines) + '\n'
 
     def pp(self):
         print(f'\n{b}\n\n{b.content[:500]}\n')
-
-
-def read_text(blob: Blob):
-    """Read and return the text from a blob."""
-    return blob.data_stream.read().decode("utf-8")
 
 
 def pp_tree(tree: Tree):
