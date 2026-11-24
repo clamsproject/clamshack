@@ -337,7 +337,7 @@ class Project(utils.FileSystemNode):
 
     @property
     def batches(self):
-        return list(sorted(self._batches.values()))
+        return self._batches
 
     @property
     def batch_names(self):

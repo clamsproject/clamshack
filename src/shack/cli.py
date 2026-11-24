@@ -1,3 +1,4 @@
+import csv
 import json
 import textwrap
 import traceback
@@ -15,10 +16,10 @@ from rich.syntax import Syntax
 from rich.style import Style
 
 from mmif.utils.cli import describe
-from mmif.utils.workflow_helper import describe_single_mmif, generate_param_hash
+from mmif.utils.workflow_helper import describe_single_mmif
 from mmif_storage.utils import load_json
 
-from shack import ClamShack, ShackError
+from shack import ClamShack, ShackError, AlreadyDoneWarning
 from shack.annotations import AnnotationRepository, Project, BatchFile
 from shack.evaluations import EvaluationRepository, Task
 from shack.config import messages, COMMANDS, SHELL_COMMANDS, ESHELL_COMMANDS
@@ -561,6 +562,15 @@ class Shell(AbstractShell):
         self.cmdqueue.append('goto 0')
         self.cmdqueue.append('eval')
 
+    def do_t2(self, arg):
+        self.cmdqueue.append('search app whisper')
+        self.cmdqueue.append('goto 0')
+        self.cmdqueue.append('eval')
+
+    def do_t3(self, arg):
+        self.cmdqueue.append('cd 0')
+        self.cmdqueue.append('eval')
+
     def do_test(self, arg):
         if arg == 'search':
             self.cmdqueue.append('search assets f55')
@@ -834,7 +844,7 @@ class EvaluationShell(AbstractShell):
             if repo is not None:
                 result = repo.set_branch(args[1])
                 if result:
-                    print(f'Set branch in "{repo.path}" to {args[1]}"')
+                    print(f' Set branch in "{repo.path}" to {args[1]}"')
                     # When we have changed the branch we want to update the tasks,
                     # projects and batches on the view
                     if args[0] == 'annotations':
@@ -857,16 +867,16 @@ class EvaluationShell(AbstractShell):
             # no argument means we want a listing
             projects = self.view.projects
             if self.view.task is not None:
-                goldspec = self.view.task.goldspec
                 # only keep the relevant projects for the task
+                goldspec = self.view.task.goldspec
                 project_specs = Project.gold_specifications
                 matching_projects = Project.matching_projects(goldspec)
                 projects = { 
                     identifier: name for identifier, name in projects.items()
                     if name in matching_projects }
+
             table = projects_table()
-            for project_id in projects:
-                project_name = self.view.projects[project_id]
+            for project_id, project_name in projects.items():
                 project = self.annotations.get_project(project_name)
                 gold_count = str(len(project._golds))
                 batch_count = str(len(project._batches))
@@ -880,40 +890,34 @@ class EvaluationShell(AbstractShell):
 
     def do_batches(self, arg):
         if arg:
-            # batch_name = get_name(self.view.batches, arg)
-            # #warning('This functionality is disabled and will be moved elsewhere')
-            # batch = self.annotations.get_batch(batch_name)
-            # self.view.batch = batch
+            # one argument means we are selecting a batch
             batch = self.select_batch(arg)
             print(f' Selected batch "{batch.name}"')
         else:
-            identifiers = self.shack.identifiers
-            table = batches_table()
-            if self.view.project is None:
-                # show all batches if no project was selected
-                for n, batch in enumerate(sorted(self.annotations.batches)):
-                    # TODO: these should be removed
-                    identifiers.append('cpb-aacip-0009a7e5474')
-                    identifiers.append('cpb-aacip-507-930ns0mg7g')
-                    overlap = str(len(batch.overlap(identifiers)))
-                    table.add_row(str(n), batch.stem, str(len(batch.files)), overlap)
-                text = ('Full list of annotation batches, with number of files per '
-                        'batch. A file can be annotated in multiple annotation tasks '
-                        'but not every file in a batch has to be annotated. The last '
-                        'column gives the overlap of the batch with the Shack files.')
-            else:
-                # show the batches for the selected project
-                for n, (batch, ids) in enumerate(self.view.project._batches.items()):
-                    table.add_row(str(n), batch, str(len(ids)), '?')
+            batches = self.view.batches
+            text = ('Full list of annotation batches, with number of files per '
+                    'batch. A file can be annotated in multiple annotation tasks '
+                    'but not every file in a batch has to be annotated. The last '
+                    'column gives the overlap of the batch with the Shack files.')
+            if self.view.project is not None:
+                # only keep the batches that are included in the project
+                project_batches = set(self.view.project.batches.keys())
+                batches = {
+                    identifier: name for identifier, name in batches.items()
+                    if name in project_batches }
                 text = ('List of annotation batches for this project, with '
-                        'number of files per annotated batch.')
-                # TODO: calculate the overlap
-            console.print(Panel('Annotation batches'))
-            lines =textwrap.wrap(
-                text, width=80, initial_indent=' ', subsequent_indent=' ')
-            for line in lines:
-                console.print(line)
-            console.print(table)
+                        'number of annotated files per batch.')
+            identifiers = self.shack.identifiers
+            # TODO: these should be removed
+            #identifiers.append('cpb-aacip-0009a7e5474')
+            #identifiers.append('cpb-aacip-507-930ns0mg7g')
+            table = batches_table()
+            for batch_id, batch_name in batches.items():
+                batch_name = self.view.batches[batch_id]
+                batch = self.annotations.get_batch(batch_name)
+                overlap = str(len(batch.overlap(identifiers)))
+                table.add_row(str(batch_id), batch.stem, str(len(batch.files)), overlap)
+            print_panel_text_table('Annotation batches', text, table)
 
     def do_tasks(self, arg):
         if arg:
@@ -933,29 +937,45 @@ class EvaluationShell(AbstractShell):
         self.view.reset()
 
     def do_run(self, arg):
-        print('running evaluation')
-        print(self.view.task)
-        print(self.view.project)
-        print(self.view.batch)
-        # 1. getting the golds
-        # 2. getting the absolute path for the golds and system files
-        # 3
+        """Run an evaluation. First ask the shack to run the evaluation and save
+        all evaluation data. Then display a summary of the results."""
+        try:
+            evaluator = self.shack.run_eval(self.annotations, self.view)
+            results_json = json.loads(evaluator.write_results())
+        except AlreadyDoneWarning as e:
+            warning('Already ran this evaluation, showing previously computed results')
+            results = Path(e.results_directory) / 'eval-results.json'
+            results_json = json.loads(results.read_text())
+        # Print a table with the results
+        console.print(Panel('Evaluation report'))
+        eval_path = f'{self.view.task.name}/{self.view.project.name}/{self.view.batch.name}'
+        console.print(f' CLAMS app output    -  "{self.view.path}"')
+        console.print(f' task/project/batch  -  "{eval_path}"')
+        print_results(results_json)
 
 
-    ## Undocumented actions for debugging and development, do not rely on the 
+    ## Undocumented actions for debugging and development, do not rely on the
     ## continued presence of any of these.
 
     def do_t(self, arg):
         self.do_load('../aapb/aapb-annotations')
         self.do_load('../aapb/aapb-evaluations')
-        #self.do_projects('')
-        self.do_projects('scene-recognition')
-        #self.do_batches('')
-        #self.do_batches('2')
-        #self.do_tasks('')
         self.do_tasks('TimePointLabeling')
+        self.do_projects('scene-recognition')
+        self.do_batches('aapb-collaboration-27-a')
         self.do_show('')
-        #self.do_show('task')
+
+    def do_t2(self, arg):
+        self.do_load('../aapb/aapb-annotations')
+        self.do_load('../aapb/aapb-evaluations')
+        self.do_branch('annotations 130-lid')
+        self.do_tasks('TimeFrameLabeling')
+        self.do_projects('spoken-lid')
+        self.do_batches('mellon-slid-a')
+        self.do_show('')
+
+    def do_t3(self, arg):
+        self.do_show('')
 
 
 class EvaluationView():
@@ -990,6 +1010,10 @@ class EvaluationView():
         self.tasks = {}
         self.projects = {}
         self.batches = {}
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def task(self):
@@ -1064,6 +1088,32 @@ def get_name(view_dictionary, name: str):
     return name
 
 
+def get_measure(measures: dict, measure: str):
+    """Return a precision, recall or fscore measure from a dictionary and make
+    it a string for the sake of putting it in a rich Table. Turn None values
+    into NaN."""
+    val = measures[measure]
+    return 'NaN' if val is None else f'{val:3.2f}'
+
+
+def print_results(results_json: dict):
+    table = results_table()
+    vals = {}
+    for prop, values in results_json.items():
+        if prop[-2:] in ('_P', '_R', '_F'):
+            measure = prop[-1]
+            label = prop[:-2]
+            if label not in vals:
+                vals[label] = {'P': None, 'R': None, 'F': None}
+            vals[label][measure] = values['0']
+    for label, measures in vals.items():
+        precision = get_measure(measures, 'P')
+        recall = get_measure(measures, 'R')
+        fscore = get_measure(measures, 'F')
+        table.add_row(label, precision, recall, fscore)
+    console.print(table)
+
+
 def projects_table() -> Table:
     table = Table(
         Column(header='id', justify='right'),
@@ -1086,12 +1136,31 @@ def batches_table() -> Table:
     return table
 
 
+def results_table() -> Table:
+    table = Table(
+        Column(header='label', justify='left'),
+        Column(header='P', justify='right'),
+        Column(header='R', justify='right'),
+        Column(header='F1', justify='right'),
+        show_header=True)
+    return table
+
+
 def print_dictionary(d: dict, header: str):
     """Print a dictionary, assumes integer keys and string values."""
     console.print(Panel(header))
     for n, name in sorted(d.items()):
         print(f' {n:2d}: {name}')
     print()
+
+
+def print_panel_text_table(header: str, text: str, table: Table):
+    console.print(Panel(header))
+    lines =textwrap.wrap(
+        text, width=80, initial_indent=' ', subsequent_indent=' ')
+    for line in lines:
+        console.print(line)
+    console.print(table)
 
 
 def parse_arguments():

@@ -8,7 +8,7 @@ import mmif_storage
 
 import shack.run
 
-from shack.errors import ShackError
+from shack.errors import ShackError, AlreadyDoneWarning
 from shack.utils import timestamp, path_as_string, path_as_tuples
 
 
@@ -26,6 +26,9 @@ class ClamShack:
         self.mmif_dir = self.location / 'mmif'
         self.sources_dir = self.location / 'sources'
         self.jobs_dir = self.location / 'jobs'
+        self.evaluation_dir =  self.location / 'evaluation'
+        self.golds_dir = self.location / 'evaluation' / 'golds'
+        self.results_dir = self.location / 'evaluation' / 'results'
         self.assets_file = self.assets_dir / 'list.txt'
         self.history_file = self.location / '.history'
         self.queue_file = self.location / '.queue'
@@ -50,15 +53,15 @@ class ClamShack:
         self.params = {}         # run-time parameters
 
     def create_directory_structure(self):
-        """Create the directory scaffolding. The files are just touched so that we
-        are certain they exist, the exception is the queue file which we make sure
-        is empty when we start a shack."""
-        for p in (self.location, self.assets_dir, self.mmif_dir,
-                  self.sources_dir, self.jobs_dir):
+        """Create the directory scaffolding. The files are either just touched so
+        that we are certain they exist, or overwritten with an empty files if we
+        we want to make sure they are empty when we start a shack."""
+        for p in (self.location, self.assets_dir, self.evaluation_dir, self.golds_dir,
+                  self.results_dir, self.mmif_dir, self.sources_dir, self.jobs_dir):
             p.mkdir(exist_ok=True)
         self.assets_file.touch()
         self.history_file.touch()
-        self.error_file.touch()
+        self.error_file.write_text('')
         self.queue_file.write_text('')
 
     def is_clams_directory(self) -> bool:
@@ -250,6 +253,29 @@ class ClamShack:
     def run_job(self, name: str):
         process_id = shack.run.run_job(timestamp(), name, self)
         return process_id
+
+    def run_eval(self, annotations, view):
+        gold_dir = annotations.path / 'projects' / view.project.name / 'golds'
+        pred_dir = self.location / 'mmif' / view._path
+        results_dir = (
+            self.location / 'evaluation' / 'results' / view._path /
+            view.task.name / view.project.name / view.batch.name)
+        if results_dir.exists():
+            raise AlreadyDoneWarning('Already ran this evaluation', results_dir)
+        # TODO: need to add in the label mapping, now hard-coded as a hack, should
+        # be made available in the view or in another parameter
+        labelmap = {'en': 'English', 'es': 'Spanish', 'English': 'English', 'Spanish': 'Spanish'}
+        evaluator = view.task.evaluator(
+             batchname=view.batch.name,
+             gold_loc=str(gold_dir),
+             pred_loc=str(pred_dir),
+             label_map=labelmap,
+             aapb_ann_commit='130-lid')
+        evaluator.calculate_metrics(by_guid=True)
+        # Save data to appropriate paths in <shackname>/evaluation/results/<path>
+        results_dir.mkdir(parents=True, exist_ok=True)
+        evaluator.save_results(results_dir)
+        return evaluator
 
     def reindex(self):
         """Recreate the MmifIndex. Should run this after jobs are completed."""
@@ -497,7 +523,7 @@ class Job:
     #   running, aborted, failed, finished and maybe some more
     #   (for running a check whether there is a process id that seems to 
     #   be a clamshell job, if not you have failed, aborted is for when the
-    #   user aborts the job; i fpossible update the finished value)
+    #   user aborts the job; if possible update the finished value)
     # - allow deleting a job (with option to remove associated files?)
 
     def __init__(self, path: Path):

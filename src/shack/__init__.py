@@ -12,7 +12,7 @@ import argparse
 
 import mmif_storage
 
-from shack.core import ClamShack, ShackError
+from shack.core import ClamShack, ShackError, AlreadyDoneWarning
 from shack.core import History, Assets, MmifIndex, Job
 from shack.cli import Shell
 from shack.run import ClamsApp
